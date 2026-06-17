@@ -180,4 +180,459 @@
        ========================================== */
     const studentDB = {
         "1🐜개미물곰": "9852", "2🐜쟈스민갬": "7251", "3🐜빼빼개미": "8982", "4🐜문어개미": "5627",
-        "5🐜우유개미": "2474", "6🐜갬": "4283", "7🐜大中개미": "3269", "51🐜다개미
+        "5🐜우유개미": "2474", "6🐜갬": "4283", "7🐜大中개미": "3269", "51🐜다개미": "3581",
+        "52🐜담개미": "6113", "53🐜현개미": "1317", "54🐜민갬": "7384", "55🐜닥개미": "8853",
+        "56🐜원개미": "6350", "57🐜챙갬": "3879", "58🐜R개미": "2100", "59🐜소은갬": "6556"
+    };
+
+    let myName = "";
+    let myTeam = "";
+    let isTeacher = false;
+
+    window.onload = () => {
+        const lobbySelect = document.getElementById('player-id');
+        const recSelect = document.getElementById('rec-player-id');
+        for (let name in studentDB) {
+            let opt1 = document.createElement('option'); opt1.value = name; opt1.innerText = name;
+            let opt2 = document.createElement('option'); opt2.value = name; opt2.innerText = name;
+            lobbySelect.appendChild(opt1);
+            recSelect.appendChild(opt2);
+        }
+
+        // 브라우저 새로고침(F5) 시 기존 접속 정보(교사/학생) 자동 복구 로직
+        let savedRole = sessionStorage.getItem('role');
+        if (savedRole === 'teacher') {
+            initTeacherDashboard(true); // 비밀번호 없이 교사 화면 복구
+        } else if (savedRole === 'student') {
+            myName = sessionStorage.getItem('myName');
+            myTeam = sessionStorage.getItem('myTeam');
+            if (myName) {
+                // 게임 진행 중이 아니라면 대기실로 원상복구
+                db.ref('gameState').once('value', snap => {
+                    let st = snap.val();
+                    if (!st || st.status !== 'playing') {
+                        showScreen('screen-lobby');
+                        document.getElementById('lobby-status').innerText = "✅ 재접속 완료! 대기 중...";
+                        document.getElementById('btn-join').disabled = true;
+                    }
+                });
+            }
+        }
+    };
+
+    /* ==========================================
+       파이어베이스 초기화
+       ========================================== */
+    const firebaseConfig = {
+      apiKey: "AIzaSyBxkFKJQF3TaYP_024apdVQs4T86FAM08Q",
+      authDomain: "proverb-game-6582d.firebaseapp.com",
+      databaseURL: "https://proverb-game-6582d-default-rtdb.firebaseio.com",
+      projectId: "proverb-game-6582d",
+      storageBucket: "proverb-game-6582d.firebasestorage.app",
+      messagingSenderId: "303291371598",
+      appId: "1:303291371598:web:4e9ccb071bfa879a50f31f"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 속담 데이터 샘플 (추가 가능)
+    const proverbs = [
+        { p: "가는 날이 장날", m: "어떤 일을 하려고 하는데 뜻하지 않은 일을 공교롭게 당한다.", i: "ㄱㄴ ㄴㅇ ㅈㄴ",
+          e: ["떡볶이 먹으러 갔는데 하필 휴일이네. ( )이라니까.", "오랜만에 소풍을 갔는데 갑자기 폭우가 쏟아져. 완전 ( )이야."] },
+        { p: "가는 말이 고와야 오는 말이 곱다", m: "남에게 말이나 행동을 좋게 해야 자기에게도 좋은 반응이 돌아온다.", i: "ㄱㄴ ㅁㅇ ㄱㅇㅇ ㅇㄴ ㅁㅇ ㄱㄷ",
+          e: ["네가 먼저 짜증을 내니까 친구도 화를 내지. ( )고 하잖아.", "내가 먼저 웃으며 인사하니 상대방도 친절하게 대해주었어. ( )는 말이 맞네."] },
+        { p: "개구리 올챙이 적 생각 못 한다", m: "성공하고 나서 어려웠던 지난날은 생각하지 않고 뽐냄.", i: "ㄱㄱㄹ ㅇㅊㅇ ㅈ ㅅㄱ ㅁ ㅎㄷ",
+          e: ["자기도 신입생 때 실수 많이 했으면서 후배를 저렇게 혼내다니, ( )더니 딱 그 꼴이야."] },
+        { p: "백지장도 맞들면 낫다", m: "아무리 쉬운 일이라도 서로 힘을 합하면 훨씬 쉽다.", i: "ㅂㅈㅈㄷ ㅁㄷㅁ ㄴㄷ",
+          e: ["청소 구역이 넓었는데 네가 도와주니 금방 끝났어. 역시 ( )."] },
+        { p: "사공이 많으면 배가 산으로 간다", m: "간섭하는 사람이 많으면 일이 제대로 되기 어렵다.", i: "ㅅㄱㅇ ㅁㅇㅁ ㅂㄱ ㅅㅇㄹ ㄱㄷ",
+          e: ["모둠 숙제 하는데 서로 자기 아이디어만 맞다고 우기니, ( )고 결론이 안 나."] },
+        { p: "낫 놓고 기역 자도 모른다", m: "아주 무식하다.", i: "ㄴ ㄴㄱ ㄱㅇ ㅈㄷ ㅁㄹㄷ",
+          e: ["저렇게 쉬운 글자도 못 읽다니, ( )다더니 딱 그 모양이야."] },
+        { p: "낮말은 새가 듣고 밤말은 쥐가 듣는다", m: "늘 말조심해야 함을 이르는 말.", i: "ㄴㅁㅇ ㅅㄱ ㄷㄱ ㅂㅁㅇ ㅈㄱ ㄷㄴㄷ",
+          e: ["아무리 우리끼리 비밀 이야기라도 조심해. ( )고 했어."] },
+        { p: "누워서 떡 먹기", m: "어떤 일이 해 내기 매우 쉽다는 뜻.", i: "ㄴㅇㅅ ㄸ ㅁㄱ",
+          e: ["이 수학 문제는 나한테 ( )야. 1분도 안 걸려."] },
+        { p: "돌다리도 두들겨 보고 건너라", m: "비록 잘 아는 일이라도 세심한 주의를 기울여야 한다.", i: "ㄷㄷㄹㄷ ㄷㄷㄱ ㅂㄱ ㄱㄴㄹ",
+          e: ["아무리 쉬운 시험이라도 한 번 더 검토해봐. ( )고 하잖아."] },
+        { p: "등잔 밑이 어둡다", m: "가까운 데 있는 일을 먼 데 있는 일보다 오히려 잘 모른다.", i: "ㄷㅈ ㅁㅇ ㅇㄷㄷ",
+          e: ["안경을 한참 찾았는데 내 머리 위에 있었어! ( )다더니."] }
+    ];
+
+    function shuffle(array) { return array.sort(() => Math.random() - 0.5); }
+    function strip(str) { return str.replace(/\s/g, ''); }
+    function getRandomExample(item) { return Array.isArray(item.e) ? item.e[Math.floor(Math.random() * item.e.length)] : item.e; }
+
+    function showScreen(id) {
+        document.querySelectorAll('.container > div').forEach(d => d.classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+    }
+    
+    function goHome() { 
+        clearInterval(window.recTimerObj); 
+        clearInterval(window.multiTimerObj); 
+        sessionStorage.clear(); // 메인으로 나갈 때 확실히 로그인 정보를 지워줌
+        myName = ""; myTeam = ""; isTeacher = false;
+        showScreen('screen-main'); 
+    }
+    
+    function confirmExit() { if(confirm("게임을 중간에 나가면 점수가 저장되지 않습니다. 나가시겠습니까?")) goHome(); }
+
+    /* ==========================================
+       명예의 전당 (랭킹 보기)
+       ========================================== */
+    function showHallOfFame() {
+        showScreen('screen-hall-of-fame');
+        const listDiv = document.getElementById('hall-of-fame-list');
+        listDiv.innerHTML = "<p>데이터를 불러오는 중...</p>";
+        
+        db.ref('hallOfFame').once('value', snap => {
+            let data = snap.val() || {};
+            let players = [];
+            for (let name in data) { players.push({ name: name, score: data[name].score, date: data[name].date }); }
+            
+            if(players.length === 0) {
+                listDiv.innerHTML = "<p>아직 등록된 랭킹이 없습니다. 첫 번째로 도전해보세요!</p>";
+                return;
+            }
+            
+            players.sort((a, b) => b.score - a.score);
+            let html = "";
+            players.forEach((p, i) => {
+                let medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}등`;
+                html += `<div class="rank-item"><strong>${medal}</strong> ${p.name} - <strong>${p.score}점</strong> <span style="font-size:12px;color:gray;">(${p.date})</span></div>`;
+            });
+            listDiv.innerHTML = html;
+        });
+    }
+
+    /* ==========================================
+       모드 1 & 2 (연습, 기록) 관련 생략 없이 유지
+       ========================================== */
+    let pracIdx = 0; let missedProverbs = new Set();
+    function startPractice() { pracIdx = 0; missedProverbs.clear(); shuffle(proverbs); loadPracQ(); showScreen('screen-practice'); }
+    function loadPracQ() {
+        const item = proverbs[pracIdx % proverbs.length];
+        document.getElementById('prac-example').innerText = getRandomExample(item);
+        document.getElementById('prac-meaning').innerText = item.m;
+        let words = item.p.split(" ");
+        let hint = words.slice(0, Math.ceil(words.length / 2)).join(" ");
+        document.getElementById('prac-question').innerText = hint + " _________";
+        document.getElementById('prac-input').value = ""; document.getElementById('prac-feedback').innerText = ""; document.getElementById('prac-input').focus();
+    }
+    function checkPractice() {
+        const item = proverbs[pracIdx % proverbs.length];
+        const user = document.getElementById('prac-input').value;
+        if(strip(user) === "" || !strip(item.p).includes(strip(user))) {
+            document.getElementById('prac-feedback').style.color = "red"; document.getElementById('prac-feedback').innerText = "틀렸습니다. 다시 시도해보세요!";
+            missedProverbs.add(item.p + " - " + item.m);
+        } else {
+            document.getElementById('prac-feedback').style.color = "green"; document.getElementById('prac-feedback').innerText = `정답! (${item.p})`;
+            pracIdx++; setTimeout(loadPracQ, 800);
+        }
+    }
+    function endPractice() {
+        showScreen('screen-practice-result');
+        const area = document.getElementById('prac-missed-area');
+        if(missedProverbs.size === 0) area.innerHTML = "<p>틀린 문제가 없습니다! 완벽해요!</p>";
+        else {
+            area.innerHTML = "<h3>내가 헷갈렸던 속담들</h3>";
+            missedProverbs.forEach(txt => { area.innerHTML += `<div class="missed-list">${txt}</div>`; });
+        }
+    }
+
+    let recQList = []; let recIdx = 0; let recScore = 0; let recCombo = 0; let recTimeLeft = 15;
+    function startRecord() {
+        recQList = shuffle([...proverbs]);
+        if(recQList.length > 25) recQList = recQList.slice(0, 25);
+        recIdx = 0; recScore = 0; recCombo = 0;
+        showScreen('screen-record'); loadRecQ();
+    }
+    function loadRecQ() {
+        if(recIdx >= recQList.length || recIdx >= 25) return endRecord();
+        const item = recQList[recIdx];
+        document.getElementById('rec-progress').innerText = `${recIdx+1}/25`;
+        document.getElementById('rec-score').innerText = recScore;
+        document.getElementById('rec-combo').innerText = recCombo;
+        document.getElementById('rec-example').innerText = getRandomExample(item);
+        
+        let opts = [item.p]; let pool = shuffle([...proverbs]);
+        for(let p of pool) { if(p.p !== item.p && opts.length < 4) opts.push(p.p); }
+        opts = shuffle(opts);
+        
+        const optDiv = document.getElementById('rec-options'); optDiv.innerHTML = "";
+        opts.forEach(o => {
+            let b = document.createElement('button'); b.className = 'btn-choice'; b.innerText = o;
+            b.onclick = () => checkRecordAns(o, item.p); optDiv.appendChild(b);
+        });
+
+        recTimeLeft = 15; document.getElementById('rec-timer').innerText = recTimeLeft;
+        clearInterval(window.recTimerObj);
+        window.recTimerObj = setInterval(() => {
+            recTimeLeft--; document.getElementById('rec-timer').innerText = recTimeLeft;
+            if(recTimeLeft <= 0) checkRecordAns("", item.p);
+        }, 1000);
+    }
+    function checkRecordAns(user, correct) {
+        clearInterval(window.recTimerObj);
+        if(user === correct) { recScore += 5 + recTimeLeft + (recCombo * 2); recCombo++; } 
+        else { recScore = Math.max(0, recScore - 5); recCombo = 0; }
+        recIdx++; loadRecQ();
+    }
+    function endRecord() {
+        showScreen('screen-record-result');
+        document.getElementById('rec-final-score').innerText = `${recScore}점`;
+        document.getElementById('rec-final-rank').innerText = "";
+        document.getElementById('rec-stats').innerText = "";
+        document.getElementById('rec-save-area').classList.remove('hidden');
+    }
+    function saveRecordToDB() {
+        let pName = document.getElementById('rec-player-id').value;
+        if(!pName) return alert("아이디를 선택해주세요!");
+        db.ref('hallOfFame').once('value', snap => {
+            let data = snap.val() || {};
+            let oldScore = data[pName] ? data[pName].score : 0;
+            if(recScore > oldScore) {
+                data[pName] = { score: recScore, date: new Date().toLocaleDateString() };
+                db.ref('hallOfFame/' + pName).set(data[pName]);
+            }
+            let allScores = Object.values(data).map(d => d.score);
+            if(recScore > oldScore) allScores.push(recScore); 
+            allScores.sort((a,b) => b-a);
+            let myRank = allScores.indexOf(recScore) + 1;
+            document.getElementById('rec-save-area').classList.add('hidden');
+            document.getElementById('rec-final-rank').innerText = `현재 등수: ${myRank}등!`;
+            document.getElementById('rec-stats').innerText = "명예의 전당 랭킹에 저장되었습니다.";
+        });
+    }
+
+    /* ==========================================
+       모드 3: 경쟁 도전 (로그인/복구/타이머 보호 적용)
+       ========================================== */
+    function joinMultiGame() {
+        let selectedId = document.getElementById('player-id').value;
+        let enteredPw = document.getElementById('player-pw').value.trim();
+        myTeam = document.getElementById('player-team').value;
+
+        if (!selectedId) return alert("아이디를 선택해주세요!");
+        if (studentDB[selectedId] !== enteredPw) return alert("비밀번호가 일치하지 않습니다. 다시 확인해주세요!");
+
+        myName = selectedId;
+        // 로그인 성공 시 브라우저에 임시 저장(새로고침 대비)
+        sessionStorage.setItem('role', 'student');
+        sessionStorage.setItem('myName', myName);
+        sessionStorage.setItem('myTeam', myTeam);
+
+        document.getElementById('btn-join').disabled = true;
+        document.getElementById('lobby-status').innerText = "✅ 인증 완료! 선생님을 기다립니다...";
+        db.ref('lobby/' + myName).set({ name: myName, team: myTeam, score: 0 });
+    }
+    
+    function initTeacherDashboard(isRecovery = false) {
+        if (!isRecovery) {
+            let pw = prompt("교사용 화면 접속을 위한 비밀번호를 입력하세요.\n(초기 비밀번호: 1234)");
+            if (pw !== "1234") return alert("비밀번호가 틀렸습니다.");
+        }
+        
+        isTeacher = true; 
+        sessionStorage.setItem('role', 'teacher'); // 교사 권한 저장
+        showScreen('screen-teacher');
+        
+        db.ref('lobby').on('value', snap => {
+            const list = document.getElementById('teacher-team-list'); list.innerHTML = "";
+            let data = snap.val() || {}, teams = {};
+            Object.values(data).forEach(p => { if(!teams[p.team]) teams[p.team] = []; teams[p.team].push(p.name); });
+            for(let t in teams) {
+                let c = document.createElement('div'); c.className = 'team-card';
+                c.innerHTML = `<h3>${t} (${teams[t].length}명)</h3>` + teams[t].map(n => `<div>✔️ ${n}</div>`).join('');
+                list.appendChild(c);
+            }
+        });
+    }
+    
+    function startMultiGame() {
+        let pool = shuffle([...proverbs]);
+        let quizCount = Math.min(20, pool.length);
+        let multiQList = pool.slice(0, quizCount).map(item => ({ p: item.p, m: item.m, i: item.i, e: getRandomExample(item) }));
+        db.ref('gameState').set({ status: 'playing', qIndex: 0, quizData: multiQList, answers: {}, showAns: false });
+    }
+    
+    function resetMultiGame() { 
+        db.ref('lobby').remove(); 
+        db.ref('gameState').set({status:'waiting'}); 
+        alert("데이터가 깨끗하게 초기화되었습니다."); 
+    }
+
+    db.ref('gameState').on('value', snap => {
+        let state = snap.val();
+        if(!state) return;
+
+        if (state.status === 'playing') {
+            if (!isTeacher && !myName) return; // 로그인하지 않은 떠돌이는 무시
+
+            showScreen('screen-multi-quiz');
+            document.getElementById('multi-header').innerText = isTeacher ? "👨‍🏫 선생님 화면 (모니터링)" : "🔥 게임 진행 중!";
+            document.getElementById('multi-teacher-controls').classList.toggle('hidden', !isTeacher);
+            
+            let qIdx = state.qIndex;
+            if(qIdx >= state.quizData.length || qIdx >= 20) return processFinalResult();
+
+            let qData = state.quizData[qIdx];
+            document.getElementById('multi-progress').innerText = `문제 ${qIdx+1}/${state.quizData.length}`;
+            
+            let area = document.getElementById('multi-q-area');
+            let inpArea = document.getElementById('multi-input-area');
+            let optArea = document.getElementById('multi-options-area');
+            
+            document.getElementById('multi-wait-msg').innerText = "";
+            document.getElementById('multi-input').value = "";
+            document.getElementById('multi-input').disabled = false;
+            document.getElementById('multi-submit-btn').disabled = false;
+            inpArea.classList.add('hidden'); 
+            optArea.classList.add('hidden');
+            optArea.innerHTML = "";
+
+            if(qIdx < 5) {
+                area.innerHTML = `<p><strong>뜻:</strong> ${qData.m}</p><p style="font-size:30px; letter-spacing:5px;">${qData.i}</p>`;
+                if(!isTeacher) { inpArea.classList.remove('hidden'); document.getElementById('multi-input').focus(); }
+            } else if (qIdx < 15 && qIdx < state.quizData.length - 5) { 
+                area.innerHTML = `<p>${qData.e}</p>`;
+                if(!isTeacher) {
+                    optArea.classList.remove('hidden'); 
+                    let opts = [qData.p]; let pPool = shuffle([...proverbs]);
+                    for(let p of pPool) { if(p.p !== qData.p && opts.length < 4) opts.push(p.p); }
+                    shuffle(opts).forEach(o => {
+                        let b = document.createElement('button'); b.className = 'btn-choice'; b.innerText = o;
+                        b.onclick = () => submitMultiChoice(o); optArea.appendChild(b);
+                    });
+                }
+            } else {
+                area.innerHTML = `<p style="color:#c0392b;">* 상황에 맞는 속담을 정확히 적으세요!</p><p>${qData.e}</p>`;
+                if(!isTeacher) { inpArea.classList.remove('hidden'); document.getElementById('multi-input').focus(); }
+            }
+
+            // 학생이 새로고침 후 접속했을 때, 이미 제출한 문제라면 화면 숨기기
+            if (!isTeacher && state.answers && state.answers[myName]) {
+                inpArea.classList.add('hidden'); 
+                optArea.classList.add('hidden');
+                document.getElementById('multi-wait-msg').innerText = "제출 완료! 대기 중...";
+                document.getElementById('multi-wait-msg').style.color = "#2980b9";
+            }
+
+            let ansCount = state.answers ? Object.keys(state.answers).length : 0;
+            if(isTeacher) document.getElementById('multi-submit-count').innerText = ansCount;
+
+            if(state.showAns) {
+                document.getElementById('multi-timer-text').innerText = "결과 확인 중...";
+                inpArea.classList.add('hidden'); optArea.classList.add('hidden');
+                
+                if(isTeacher) {
+                    let rev = document.getElementById('multi-answer-reveal'); rev.classList.remove('hidden');
+                    let corrects = [], wrongs = [];
+                    for(let k in state.answers) { if(state.answers[k].isCorrect) corrects.push(k); else wrongs.push(k); }
+                    rev.innerHTML = `<h3>정답: ${qData.p}</h3><p style="color:green">맞힌 학생: ${corrects.join(', ') || '없음'}</p><p style="color:red">틀린/미제출: ${wrongs.join(', ') || '없음'}</p>`;
+                } else {
+                    let myAns = state.answers && state.answers[myName] ? state.answers[myName].isCorrect : false;
+                    document.getElementById('multi-wait-msg').innerText = myAns ? "⭕ 정답입니다! (+10점)" : `❌ 틀렸습니다! (정답: ${qData.p})`;
+                    document.getElementById('multi-wait-msg').style.color = myAns ? "green" : "red";
+                }
+            } else {
+                if(isTeacher) document.getElementById('multi-answer-reveal').classList.add('hidden');
+                let tLeft = 60; 
+                document.getElementById('multi-timer').innerText = tLeft;
+                clearInterval(window.multiTimerObj);
+                
+                window.multiTimerObj = setInterval(() => {
+                    tLeft--; 
+                    // 새로고침으로 인해 타이머가 꼬여도 -1로 내려가지 않도록 시각적 보호 (0에서 멈춤)
+                    document.getElementById('multi-timer').innerText = tLeft < 0 ? 0 : tLeft;
+                    
+                    // 정답 채점과 다음 화면 넘기기는 오직 '교사' 권한의 브라우저만 통제함
+                    if(isTeacher && tLeft <= 0) forceEvaluate(qIdx);
+                }, 1000);
+            }
+
+        } else if (state.status === 'finished') {
+            if (isTeacher || myName) processFinalResult();
+        } else {
+            // 게임이 '대기(waiting)' 상태로 리셋되었을 때의 안전 장치
+            let currentScreen = document.querySelector('.container > div:not(.hidden)').id;
+            if (currentScreen === 'screen-multi-quiz' || currentScreen === 'screen-multi-result') {
+                goHome(); // 강제 종료되었으므로 학생들을 메인으로 내보냄
+            }
+        }
+    });
+
+    function submitMultiAnswer() {
+        let ans = document.getElementById('multi-input').value;
+        if(strip(ans) === "") return; submitToDB(ans);
+    }
+    function submitMultiChoice(ans) { submitToDB(ans); }
+    function submitToDB(ans) {
+        db.ref('gameState').once('value', snap => {
+            let state = snap.val();
+            let isCorrect = strip(ans) === strip(state.quizData[state.qIndex].p);
+            db.ref(`gameState/answers/${myName}`).set({ answer: ans, isCorrect: isCorrect });
+            document.getElementById('multi-input-area').classList.add('hidden'); document.getElementById('multi-options-area').classList.add('hidden');
+            document.getElementById('multi-wait-msg').innerText = "제출 완료! 대기 중..."; document.getElementById('multi-wait-msg').style.color = "#2980b9";
+        });
+    }
+
+    db.ref('gameState/answers').on('value', snap => {
+        if(!isTeacher) return;
+        db.ref('lobby').once('value', lSnap => {
+            let total = Object.keys(lSnap.val() || {}).length, current = Object.keys(snap.val() || {}).length;
+            if(total > 0 && current >= total) db.ref('gameState').once('value', gSnap => forceEvaluate(gSnap.val().qIndex));
+        });
+    });
+
+    let isEvaluating = false;
+    function forceEvaluate(qIdx) {
+        if(isEvaluating) return; isEvaluating = true;
+        clearInterval(window.multiTimerObj);
+        db.ref('gameState/answers').once('value', snap => {
+            let answers = snap.val() || {};
+            db.ref('lobby').once('value', lSnap => {
+                let lobby = lSnap.val() || {}, updates = {};
+                for(let player in lobby) { if(answers[player] && answers[player].isCorrect) updates[`lobby/${player}/score`] = lobby[player].score + 10; }
+                db.ref().update(updates).then(() => {
+                    db.ref('gameState').update({ showAns: true });
+                    setTimeout(() => {
+                        db.ref('gameState').once('value', gSnap => {
+                            let nextQ = qIdx + 1;
+                            if(nextQ >= gSnap.val().quizData.length || nextQ >= 20) db.ref('gameState').update({ status: 'finished' });
+                            else db.ref('gameState').update({ qIndex: nextQ, showAns: false, answers: null });
+                            isEvaluating = false;
+                        });
+                    }, 5000);
+                });
+            });
+        });
+    }
+
+    function processFinalResult() {
+        showScreen('screen-multi-result');
+        db.ref('lobby').once('value', snap => {
+            let data = snap.val() || {}, players = [], teamScores = {}, teamCounts = {};
+            for(let key in data) {
+                let p = data[key]; players.push(p);
+                if(p.team !== "개인전 👤") { teamScores[p.team] = (teamScores[p.team]||0) + p.score; teamCounts[p.team] = (teamCounts[p.team]||0) + 1; }
+            }
+            let teamAverages = [];
+            for(let t in teamScores) teamAverages.push({ team: t, avg: Math.round(teamScores[t]/teamCounts[t]) });
+            teamAverages.sort((a,b) => b.avg - a.avg);
+            let tHTML = "";
+            teamAverages.forEach((t, i) => { tHTML += `<div class="rank-card"><h3>${i+1}등. ${t.team}</h3><h2>평균 ${t.avg}점</h2></div>`; });
+            document.getElementById('res-team-rank').innerHTML = tHTML || "<p>참여한 모둠이 없습니다.</p>";
+            players.sort((a,b) => b.score - a.score);
+            let pHTML = "";
+            players.forEach((p, i) => { 
+                let medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}위`;
+                pHTML += `<div style="font-size:18px; margin:5px 0; border-bottom:1px solid #eee; width:80%; padding:5px;"><strong>${medal}</strong> ${p.name} (${p.team}) - <strong>${p.score}점</strong></div>`; 
+            });
+            document.getElementById('res-indiv-rank').innerHTML = pHTML;
+        });
+    }
+</script>
+</body>
+</html>
