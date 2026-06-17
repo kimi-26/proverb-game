@@ -161,4 +161,36 @@
     // [교사용] 전체 게임 시작 신호 보내기
     function startMultiGame() {
         // 게임 상태를 'playing'으로 변경하고, 1번 문제로 세팅
-        db.ref
+        db.ref('gameState').set({
+            status: 'playing',
+            currentQuestion: 1
+        });
+    }
+
+    // [교사용] 로비 및 게임 상태 초기화
+    function resetGame() {
+        db.ref('lobby').remove();
+        db.ref('gameState').set({ status: 'waiting', currentQuestion: 0 });
+        alert("로비와 게임 상태가 초기화되었습니다.");
+    }
+
+    // [공통] 실시간 게임 상태 감지기 (핵심 동기화 로직)
+    db.ref('gameState').on('value', (snapshot) => {
+        const state = snapshot.val();
+        if (state && state.status === 'playing') {
+            // 선생님이 시작 버튼을 눌렀을 때 모든 접속자의 화면을 강제로 퀴즈 화면으로 이동
+            showScreen('screen-multi-quiz');
+            document.getElementById('multi-question-num').innerText = state.currentQuestion;
+            document.getElementById('multi-question-area').innerText = "문제 " + state.currentQuestion + "번이 시작되었습니다! (문제 출제 로직 대기 중)";
+        } else if (state && state.status === 'waiting') {
+            // 초기화 시 메인으로 강제 이동
+            goHome();
+            document.getElementById('lobby-status').innerText = "";
+            document.getElementById('player-name').disabled = false;
+            document.getElementById('player-team').disabled = false;
+        }
+    });
+
+</script>
+</body>
+</html>
