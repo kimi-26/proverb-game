@@ -128,13 +128,13 @@
             <button class="btn-ready" id="btn-join" onclick="joinMultiGame()">로그인 및 준비 완료!</button>
         </div>
         <p id="lobby-status" style="font-weight: bold; color: #2980b9;"></p>
-        <button class="btn-danger" onclick="goHome()">🏠 메인으로 나가기</button>
+        <button class="btn-danger" onclick="goHome()">🏠 로그아웃 및 메인으로</button>
     </div>
 
     <div id="screen-teacher" class="hidden">
         <h2>👨‍🏫 교사용 대시보드</h2>
         <button class="btn-ready" onclick="startMultiGame()">🚀 게임 시작 (20문제)</button>
-        <button class="btn-danger" onclick="resetMultiGame()">🔄 로비 및 데이터 초기화</button>
+        <button class="btn-danger" onclick="resetMultiGame()">🔄 참가자 전체 초기화</button>
         <div class="team-list" id="teacher-team-list"></div>
         <button class="btn-danger" style="margin-top:20px;" onclick="goHome()">🏠 로그아웃 및 메인으로</button>
     </div>
@@ -158,6 +158,7 @@
         <div id="multi-teacher-controls" class="hidden" style="margin-top: 20px; border-top: 2px solid #ccc; padding-top:10px;">
             <p>제출 현황: <span id="multi-submit-count">0</span>명 완료</p>
             <div id="multi-answer-reveal" class="hidden" style="background:#ffeaa7; padding:10px; border-radius:5px;"></div>
+            <button class="btn-danger" style="margin-top: 15px; width:100%;" onclick="abortMultiGame()">⏹️ 게임 강제 중단 (모두 대기실로)</button>
         </div>
     </div>
 
@@ -167,6 +168,13 @@
         <div class="rank-list" id="res-team-rank"></div>
         <h3>👤 개인 순위</h3>
         <div class="rank-list" id="res-indiv-rank" style="flex-direction: column; align-items: center;"></div>
+        
+        <div id="multi-teacher-result-controls" class="hidden" style="margin-top: 20px; border-top: 2px solid #ccc; padding-top:15px;">
+            <p style="color:#c0392b; font-weight:bold;">👨‍🏫 선생님 전용 컨트롤</p>
+            <button class="btn-ready" style="background-color: #9b59b6;" onclick="startMultiGame()">▶️ 다음 라운드 진행 (기존 점수에 누적)</button>
+            <button class="btn-danger" style="background-color: #f39c12; width: 100%; margin-top:10px;" onclick="returnToLobbyWithReset()">🔄 대기실로 모두 소환 (점수 0점으로 초기화)</button>
+        </div>
+        
         <button class="btn-danger" style="margin-top:20px;" onclick="goHome()">🏠 로그아웃 및 메인으로</button>
     </div>
 </div>
@@ -199,15 +207,14 @@
             recSelect.appendChild(opt2);
         }
 
-        // 브라우저 새로고침(F5) 시 기존 접속 정보(교사/학생) 자동 복구 로직
+        // 브라우저 새로고침(F5) 시 기존 접속 정보 복구
         let savedRole = sessionStorage.getItem('role');
         if (savedRole === 'teacher') {
-            initTeacherDashboard(true); // 비밀번호 없이 교사 화면 복구
+            initTeacherDashboard(true);
         } else if (savedRole === 'student') {
             myName = sessionStorage.getItem('myName');
             myTeam = sessionStorage.getItem('myTeam');
             if (myName) {
-                // 게임 진행 중이 아니라면 대기실로 원상복구
                 db.ref('gameState').once('value', snap => {
                     let st = snap.val();
                     if (!st || st.status !== 'playing') {
@@ -235,28 +242,18 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 속담 데이터 샘플 (추가 가능)
+    // 속담 데이터 샘플
     const proverbs = [
-        { p: "가는 날이 장날", m: "어떤 일을 하려고 하는데 뜻하지 않은 일을 공교롭게 당한다.", i: "ㄱㄴ ㄴㅇ ㅈㄴ",
-          e: ["떡볶이 먹으러 갔는데 하필 휴일이네. ( )이라니까.", "오랜만에 소풍을 갔는데 갑자기 폭우가 쏟아져. 완전 ( )이야."] },
-        { p: "가는 말이 고와야 오는 말이 곱다", m: "남에게 말이나 행동을 좋게 해야 자기에게도 좋은 반응이 돌아온다.", i: "ㄱㄴ ㅁㅇ ㄱㅇㅇ ㅇㄴ ㅁㅇ ㄱㄷ",
-          e: ["네가 먼저 짜증을 내니까 친구도 화를 내지. ( )고 하잖아.", "내가 먼저 웃으며 인사하니 상대방도 친절하게 대해주었어. ( )는 말이 맞네."] },
-        { p: "개구리 올챙이 적 생각 못 한다", m: "성공하고 나서 어려웠던 지난날은 생각하지 않고 뽐냄.", i: "ㄱㄱㄹ ㅇㅊㅇ ㅈ ㅅㄱ ㅁ ㅎㄷ",
-          e: ["자기도 신입생 때 실수 많이 했으면서 후배를 저렇게 혼내다니, ( )더니 딱 그 꼴이야."] },
-        { p: "백지장도 맞들면 낫다", m: "아무리 쉬운 일이라도 서로 힘을 합하면 훨씬 쉽다.", i: "ㅂㅈㅈㄷ ㅁㄷㅁ ㄴㄷ",
-          e: ["청소 구역이 넓었는데 네가 도와주니 금방 끝났어. 역시 ( )."] },
-        { p: "사공이 많으면 배가 산으로 간다", m: "간섭하는 사람이 많으면 일이 제대로 되기 어렵다.", i: "ㅅㄱㅇ ㅁㅇㅁ ㅂㄱ ㅅㅇㄹ ㄱㄷ",
-          e: ["모둠 숙제 하는데 서로 자기 아이디어만 맞다고 우기니, ( )고 결론이 안 나."] },
-        { p: "낫 놓고 기역 자도 모른다", m: "아주 무식하다.", i: "ㄴ ㄴㄱ ㄱㅇ ㅈㄷ ㅁㄹㄷ",
-          e: ["저렇게 쉬운 글자도 못 읽다니, ( )다더니 딱 그 모양이야."] },
-        { p: "낮말은 새가 듣고 밤말은 쥐가 듣는다", m: "늘 말조심해야 함을 이르는 말.", i: "ㄴㅁㅇ ㅅㄱ ㄷㄱ ㅂㅁㅇ ㅈㄱ ㄷㄴㄷ",
-          e: ["아무리 우리끼리 비밀 이야기라도 조심해. ( )고 했어."] },
-        { p: "누워서 떡 먹기", m: "어떤 일이 해 내기 매우 쉽다는 뜻.", i: "ㄴㅇㅅ ㄸ ㅁㄱ",
-          e: ["이 수학 문제는 나한테 ( )야. 1분도 안 걸려."] },
-        { p: "돌다리도 두들겨 보고 건너라", m: "비록 잘 아는 일이라도 세심한 주의를 기울여야 한다.", i: "ㄷㄷㄹㄷ ㄷㄷㄱ ㅂㄱ ㄱㄴㄹ",
-          e: ["아무리 쉬운 시험이라도 한 번 더 검토해봐. ( )고 하잖아."] },
-        { p: "등잔 밑이 어둡다", m: "가까운 데 있는 일을 먼 데 있는 일보다 오히려 잘 모른다.", i: "ㄷㅈ ㅁㅇ ㅇㄷㄷ",
-          e: ["안경을 한참 찾았는데 내 머리 위에 있었어! ( )다더니."] }
+        { p: "가는 날이 장날", m: "어떤 일을 하려고 하는데 뜻하지 않은 일을 공교롭게 당한다.", i: "ㄱㄴ ㄴㅇ ㅈㄴ", e: ["떡볶이 먹으러 갔는데 하필 휴일이네. ( )이라니까.", "오랜만에 소풍을 갔는데 갑자기 폭우가 쏟아져. 완전 ( )이야."] },
+        { p: "가는 말이 고와야 오는 말이 곱다", m: "남에게 말이나 행동을 좋게 해야 자기에게도 좋은 반응이 돌아온다.", i: "ㄱㄴ ㅁㅇ ㄱㅇㅇ ㅇㄴ ㅁㅇ ㄱㄷ", e: ["네가 먼저 짜증을 내니까 친구도 화를 내지. ( )고 하잖아."] },
+        { p: "개구리 올챙이 적 생각 못 한다", m: "성공하고 나서 어려웠던 지난날은 생각하지 않고 뽐냄.", i: "ㄱㄱㄹ ㅇㅊㅇ ㅈ ㅅㄱ ㅁ ㅎㄷ", e: ["자기도 신입생 때 실수 많이 했으면서 후배를 저렇게 혼내다니, ( )더니 딱 그 꼴이야."] },
+        { p: "백지장도 맞들면 낫다", m: "아무리 쉬운 일라도 서로 힘을 합하면 훨씬 쉽다.", i: "ㅂㅈㅈㄷ ㅁㄷㅁ ㄴㄷ", e: ["청소 구역이 넓었는데 네가 도와주니 금방 끝났어. 역시 ( )."] },
+        { p: "사공이 많으면 배가 산으로 간다", m: "간섭하는 사람이 많으면 일이 제대로 되기 어렵다.", i: "ㅅㄱㅇ ㅁㅇㅁ ㅂㄱ ㅅㅇㄹ ㄱㄷ", e: ["모둠 숙제 하는데 서로 자기 아이디어만 맞다고 우기니, ( )고 결론이 안 나."] },
+        { p: "낫 놓고 기역 자도 모른다", m: "아주 무식하다.", i: "ㄴ ㄴㄱ ㄱㅇ ㅈㄷ ㅁㄹㄷ", e: ["저렇게 쉬운 글자도 못 읽다니, ( )다더니 딱 그 모양이야."] },
+        { p: "낮말은 새가 듣고 밤말은 쥐가 듣는다", m: "늘 말조심해야 함을 이르는 말.", i: "ㄴㅁㅇ ㅅㄱ ㄷㄱ ㅂㅁㅇ ㅈㄱ ㄷㄴㄷ", e: ["아무리 우리끼리 비밀 이야기라도 조심해. ( )고 했어."] },
+        { p: "누워서 떡 먹기", m: "어떤 일이 해 내기 매우 쉽다는 뜻.", i: "ㄴㅇㅅ ㄸ ㅁㄱ", e: ["이 수학 문제는 나한테 ( )야. 1분도 안 걸려."] },
+        { p: "돌다리도 두들겨 보고 건너라", m: "비록 잘 아는 일이라도 세심한 주의를 기울여야 한다.", i: "ㄷㄷㄹㄷ ㄷㄷㄱ ㅂㄱ ㄱㄴㄹ", e: ["아무리 쉬운 시험이라도 한 번 더 검토해봐. ( )고 하잖아."] },
+        { p: "등잔 밑이 어둡다", m: "가까운 데 있는 일을 먼 데 있는 일보다 오히려 잘 모른다.", i: "ㄷㅈ ㅁㅇ ㅇㄷㄷ", e: ["안경을 한참 찾았는데 내 머리 위에 있었어! ( )다더니."] }
     ];
 
     function shuffle(array) { return array.sort(() => Math.random() - 0.5); }
@@ -271,7 +268,7 @@
     function goHome() { 
         clearInterval(window.recTimerObj); 
         clearInterval(window.multiTimerObj); 
-        sessionStorage.clear(); // 메인으로 나갈 때 확실히 로그인 정보를 지워줌
+        sessionStorage.clear(); // 로그아웃 처리
         myName = ""; myTeam = ""; isTeacher = false;
         showScreen('screen-main'); 
     }
@@ -290,11 +287,7 @@
             let data = snap.val() || {};
             let players = [];
             for (let name in data) { players.push({ name: name, score: data[name].score, date: data[name].date }); }
-            
-            if(players.length === 0) {
-                listDiv.innerHTML = "<p>아직 등록된 랭킹이 없습니다. 첫 번째로 도전해보세요!</p>";
-                return;
-            }
+            if(players.length === 0) return listDiv.innerHTML = "<p>아직 등록된 랭킹이 없습니다. 첫 번째로 도전해보세요!</p>";
             
             players.sort((a, b) => b.score - a.score);
             let html = "";
@@ -307,7 +300,7 @@
     }
 
     /* ==========================================
-       모드 1 & 2 (연습, 기록) 관련 생략 없이 유지
+       모드 1 & 2 (연습, 기록 모드)
        ========================================== */
     let pracIdx = 0; let missedProverbs = new Set();
     function startPractice() { pracIdx = 0; missedProverbs.clear(); shuffle(proverbs); loadPracQ(); showScreen('screen-practice'); }
@@ -335,10 +328,7 @@
         showScreen('screen-practice-result');
         const area = document.getElementById('prac-missed-area');
         if(missedProverbs.size === 0) area.innerHTML = "<p>틀린 문제가 없습니다! 완벽해요!</p>";
-        else {
-            area.innerHTML = "<h3>내가 헷갈렸던 속담들</h3>";
-            missedProverbs.forEach(txt => { area.innerHTML += `<div class="missed-list">${txt}</div>`; });
-        }
+        else { area.innerHTML = "<h3>내가 헷갈렸던 속담들</h3>"; missedProverbs.forEach(txt => { area.innerHTML += `<div class="missed-list">${txt}</div>`; }); }
     }
 
     let recQList = []; let recIdx = 0; let recScore = 0; let recCombo = 0; let recTimeLeft = 15;
@@ -382,8 +372,7 @@
     function endRecord() {
         showScreen('screen-record-result');
         document.getElementById('rec-final-score').innerText = `${recScore}점`;
-        document.getElementById('rec-final-rank').innerText = "";
-        document.getElementById('rec-stats').innerText = "";
+        document.getElementById('rec-final-rank').innerText = ""; document.getElementById('rec-stats').innerText = "";
         document.getElementById('rec-save-area').classList.remove('hidden');
     }
     function saveRecordToDB() {
@@ -407,7 +396,7 @@
     }
 
     /* ==========================================
-       모드 3: 경쟁 도전 (로그인/복구/타이머 보호 적용)
+       모드 3: 경쟁 도전 (안전성 및 연속 게임 강화)
        ========================================== */
     function joinMultiGame() {
         let selectedId = document.getElementById('player-id').value;
@@ -415,10 +404,9 @@
         myTeam = document.getElementById('player-team').value;
 
         if (!selectedId) return alert("아이디를 선택해주세요!");
-        if (studentDB[selectedId] !== enteredPw) return alert("비밀번호가 일치하지 않습니다. 다시 확인해주세요!");
+        if (studentDB[selectedId] !== enteredPw) return alert("비밀번호가 일치하지 않습니다.");
 
         myName = selectedId;
-        // 로그인 성공 시 브라우저에 임시 저장(새로고침 대비)
         sessionStorage.setItem('role', 'student');
         sessionStorage.setItem('myName', myName);
         sessionStorage.setItem('myTeam', myTeam);
@@ -433,9 +421,8 @@
             let pw = prompt("교사용 화면 접속을 위한 비밀번호를 입력하세요.\n(초기 비밀번호: 1234)");
             if (pw !== "1234") return alert("비밀번호가 틀렸습니다.");
         }
-        
         isTeacher = true; 
-        sessionStorage.setItem('role', 'teacher'); // 교사 권한 저장
+        sessionStorage.setItem('role', 'teacher');
         showScreen('screen-teacher');
         
         db.ref('lobby').on('value', snap => {
@@ -451,6 +438,7 @@
     }
     
     function startMultiGame() {
+        isEvaluating = false; // 진행 오류 방지를 위해 락(Lock) 해제
         let pool = shuffle([...proverbs]);
         let quizCount = Math.min(20, pool.length);
         let multiQList = pool.slice(0, quizCount).map(item => ({ p: item.p, m: item.m, i: item.i, e: getRandomExample(item) }));
@@ -458,17 +446,39 @@
     }
     
     function resetMultiGame() { 
-        db.ref('lobby').remove(); 
-        db.ref('gameState').set({status:'waiting'}); 
-        alert("데이터가 깨끗하게 초기화되었습니다."); 
+        if(confirm("모든 데이터를 초기화하시겠습니까?")) {
+            db.ref('lobby').remove(); 
+            db.ref('gameState').set({status:'waiting'}); 
+            alert("초기화되었습니다."); 
+        }
     }
 
+    // [교사 전용 제어기능 추가] 강제 중단 및 복귀
+    function abortMultiGame() {
+        if(confirm("진행 중인 게임을 강제 종료하고 모두를 대기실로 부르시겠습니까?")) {
+            db.ref('gameState').update({ status: 'waiting' });
+        }
+    }
+
+    // [교사 전용 제어기능 추가] 결과 화면에서 점수 비우고 대기실 복귀
+    function returnToLobbyWithReset() {
+        if(confirm("모든 모둠의 점수를 0점으로 초기화하고 학생들을 대기실로 이동하시겠습니까?")) {
+            db.ref('lobby').once('value', snap => {
+                let data = snap.val() || {}, updates = {};
+                for(let key in data) updates[`lobby/${key}/score`] = 0;
+                if(Object.keys(updates).length > 0) db.ref().update(updates);
+                db.ref('gameState').update({ status: 'waiting' });
+            });
+        }
+    }
+
+    // 핵심 리스너
     db.ref('gameState').on('value', snap => {
         let state = snap.val();
         if(!state) return;
 
         if (state.status === 'playing') {
-            if (!isTeacher && !myName) return; // 로그인하지 않은 떠돌이는 무시
+            if (!isTeacher && !myName) return; // 미인증 사용자 방어
 
             showScreen('screen-multi-quiz');
             document.getElementById('multi-header').innerText = isTeacher ? "👨‍🏫 선생님 화면 (모니터링)" : "🔥 게임 진행 중!";
@@ -511,10 +521,8 @@
                 if(!isTeacher) { inpArea.classList.remove('hidden'); document.getElementById('multi-input').focus(); }
             }
 
-            // 학생이 새로고침 후 접속했을 때, 이미 제출한 문제라면 화면 숨기기
             if (!isTeacher && state.answers && state.answers[myName]) {
-                inpArea.classList.add('hidden'); 
-                optArea.classList.add('hidden');
+                inpArea.classList.add('hidden'); optArea.classList.add('hidden');
                 document.getElementById('multi-wait-msg').innerText = "제출 완료! 대기 중...";
                 document.getElementById('multi-wait-msg').style.color = "#2980b9";
             }
@@ -544,21 +552,26 @@
                 
                 window.multiTimerObj = setInterval(() => {
                     tLeft--; 
-                    // 새로고침으로 인해 타이머가 꼬여도 -1로 내려가지 않도록 시각적 보호 (0에서 멈춤)
                     document.getElementById('multi-timer').innerText = tLeft < 0 ? 0 : tLeft;
-                    
-                    // 정답 채점과 다음 화면 넘기기는 오직 '교사' 권한의 브라우저만 통제함
                     if(isTeacher && tLeft <= 0) forceEvaluate(qIdx);
                 }, 1000);
             }
 
         } else if (state.status === 'finished') {
             if (isTeacher || myName) processFinalResult();
-        } else {
-            // 게임이 '대기(waiting)' 상태로 리셋되었을 때의 안전 장치
-            let currentScreen = document.querySelector('.container > div:not(.hidden)').id;
-            if (currentScreen === 'screen-multi-quiz' || currentScreen === 'screen-multi-result') {
-                goHome(); // 강제 종료되었으므로 학생들을 메인으로 내보냄
+        } else if (state.status === 'waiting') {
+            // 게임이 중단되거나 대기실로 돌아갈 때 학생들을 튕겨내지 않고 로비 화면으로 이동시킴
+            let currentScreen = document.querySelector('.container > div:not(.hidden)')?.id;
+            if (currentScreen === 'screen-multi-quiz' || currentScreen === 'screen-multi-result' || currentScreen === 'screen-teacher') {
+                if (isTeacher) {
+                    showScreen('screen-teacher');
+                } else if (myName) {
+                    showScreen('screen-lobby');
+                    document.getElementById('lobby-status').innerText = "✅ 대기실로 돌아왔습니다. 다음 게임을 기다립니다...";
+                    document.getElementById('btn-join').disabled = true;
+                } else {
+                    goHome();
+                }
             }
         }
     });
@@ -590,28 +603,50 @@
     function forceEvaluate(qIdx) {
         if(isEvaluating) return; isEvaluating = true;
         clearInterval(window.multiTimerObj);
+        
         db.ref('gameState/answers').once('value', snap => {
             let answers = snap.val() || {};
             db.ref('lobby').once('value', lSnap => {
                 let lobby = lSnap.val() || {}, updates = {};
-                for(let player in lobby) { if(answers[player] && answers[player].isCorrect) updates[`lobby/${player}/score`] = lobby[player].score + 10; }
-                db.ref().update(updates).then(() => {
+                
+                for(let player in lobby) { 
+                    if(answers[player] && answers[player].isCorrect) {
+                        updates[`lobby/${player}/score`] = (lobby[player].score || 0) + 10; 
+                    }
+                }
+                
+                // 버그 픽스: 업데이트할 점수가 없더라도 에러 없이 다음 단계로 부드럽게 넘어가도록 구조 수정
+                const proceedNext = () => {
                     db.ref('gameState').update({ showAns: true });
                     setTimeout(() => {
                         db.ref('gameState').once('value', gSnap => {
                             let nextQ = qIdx + 1;
-                            if(nextQ >= gSnap.val().quizData.length || nextQ >= 20) db.ref('gameState').update({ status: 'finished' });
-                            else db.ref('gameState').update({ qIndex: nextQ, showAns: false, answers: null });
+                            if(nextQ >= gSnap.val().quizData.length || nextQ >= 20) {
+                                db.ref('gameState').update({ status: 'finished' });
+                            } else {
+                                db.ref('gameState').update({ qIndex: nextQ, showAns: false, answers: null });
+                            }
                             isEvaluating = false;
                         });
                     }, 5000);
-                });
+                };
+
+                if (Object.keys(updates).length > 0) {
+                    db.ref().update(updates).then(proceedNext);
+                } else {
+                    proceedNext();
+                }
             });
         });
     }
 
     function processFinalResult() {
         showScreen('screen-multi-result');
+        
+        // 교사용 컨트롤 버튼 활성화 여부
+        if(isTeacher) document.getElementById('multi-teacher-result-controls').classList.remove('hidden');
+        else document.getElementById('multi-teacher-result-controls').classList.add('hidden');
+
         db.ref('lobby').once('value', snap => {
             let data = snap.val() || {}, players = [], teamScores = {}, teamCounts = {};
             for(let key in data) {
