@@ -6,191 +6,64 @@
     <title>관용 표현 MASTER 되기</title>
     <style>
         body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 600px; max-width: 90%; text-align: center; }
-        h1 { color: #2c3e50; }
-        h2 { color: #34495e; }
+        .container { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 700px; max-width: 95%; text-align: center; max-height: 90vh; overflow-y: auto; }
+        h1 { color: #2c3e50; } h2 { color: #34495e; margin-bottom: 10px; }
         .hidden { display: none; }
         
         button { background-color: #3498db; color: white; border: none; padding: 12px 20px; margin: 8px; border-radius: 5px; cursor: pointer; font-size: 16px; transition: 0.3s; font-weight: bold; }
         button:hover { background-color: #2980b9; }
-        .btn-danger { background-color: #e74c3c; }
-        .btn-danger:hover { background-color: #c0392b; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        .btn-danger { background-color: #e74c3c; } .btn-danger:hover { background-color: #c0392b; }
         .btn-ready { background-color: #2ecc71; width: 100%; font-size: 18px; margin-top: 15px; }
+        .btn-choice { width: 48%; height: 60px; font-size: 15px; margin: 1%; white-space: normal; }
         
         input[type="text"], select { padding: 12px; width: 80%; font-size: 16px; margin: 10px 0; border: 2px solid #bdc3c7; border-radius: 5px; text-align: center; }
         
-        .info-box { background-color: #ecf0f1; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: left; }
-        .score-board { font-size: 20px; font-weight: bold; color: #27ae60; margin-bottom: 15px; }
+        .info-box { background-color: #ecf0f1; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: left; line-height: 1.5; }
+        .score-board { font-size: 20px; font-weight: bold; color: #27ae60; margin-bottom: 15px; display: flex; justify-content: space-between; }
+        .progress-text { font-size: 18px; color: #8e44ad; font-weight: bold; }
         
-        /* 교사용 화면 모둠 리스트 */
-        .team-list { display: flex; justify-content: space-around; margin-top: 20px; flex-wrap: wrap; }
-        .team-card { background: #fff; border: 2px solid #bdc3c7; border-radius: 8px; padding: 15px; width: 40%; margin-bottom: 15px; }
-        .team-card h3 { margin-top: 0; font-size: 20px; }
-        .player-item { font-size: 16px; margin: 5px 0; color: #2c3e50; font-weight: bold; }
+        .team-list, .rank-list { display: flex; justify-content: space-around; flex-wrap: wrap; margin-top: 15px; }
+        .team-card, .rank-card { background: #fff; border: 2px solid #bdc3c7; border-radius: 8px; padding: 15px; width: 45%; margin-bottom: 15px; text-align: left; box-sizing: border-box; }
+        .team-card h3 { margin-top: 0; font-size: 18px; border-bottom: 2px solid #ecf0f1; padding-bottom: 5px; }
+        
+        /* 타자 연습용 텍스트 정렬 */
+        .proverb-text { font-size: 22px; font-weight: bold; color: #2c3e50; }
+        .missed-list { text-align: left; background: #ffeaa7; padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
 <div class="container" id="app">
     <div id="screen-main">
-        <h1>🏆 관용 표현 MASTER</h1>
+        <h1>🏆 관용 표현 MASTER (속담편)</h1>
         <p>어떤 모드로 학습할까요?</p>
-        <button onclick="showScreen('screen-practice')">✏️ 연습 모드</button>
-        <button onclick="alert('기록 도전은 준비 중입니다!')">⏱️ 기록 도전</button>
+        <button onclick="startPractice()">✏️ 1. 연습 모드 (무한 타자)</button>
+        <button onclick="startRecord()">⏱️ 2. 기록 도전 (개인 랭킹)</button>
         <hr style="border: 1px solid #ecf0f1; margin: 20px 0;">
-        <button class="btn-ready" style="background-color: #f39c12;" onclick="showScreen('screen-lobby')">🔥 경쟁 도전 (학생용)</button>
+        <button class="btn-ready" style="background-color: #f39c12;" onclick="showScreen('screen-lobby')">🔥 3. 경쟁 도전 접속 (학생용)</button>
         <button style="background-color: #95a5a6; margin-top: 20px;" onclick="initTeacherDashboard()">👨‍🏫 교사용 대시보드</button>
     </div>
 
-    <div id="screen-lobby" class="hidden">
-        <h2>🔥 경쟁 도전 대기실</h2>
-        <div class="info-box" style="text-align: center;">
-            <p>이름과 모둠을 선택하고 준비 완료를 누르세요!</p>
-            <input type="text" id="player-name" placeholder="이름 (예: 홍길동)">
-            <select id="player-team">
-                <option value="1.⭐">1모둠 ⭐</option>
-                <option value="2.❤️">2모둠 ❤️</option>
-                <option value="3.🎈">3모둠 🎈</option>
-                <option value="4.🍀">4모둠 🍀</option>
-            </select>
-            <button class="btn-ready" onclick="joinGame()">준비 완료!</button>
+    <div id="screen-practice" class="hidden">
+        <h2>✏️ 연습 모드</h2>
+        <div class="info-box">
+            <p><strong>상황:</strong> <span id="prac-example"></span></p>
+            <p><strong>뜻:</strong> <span id="prac-meaning"></span></p>
         </div>
-        <p id="lobby-status" style="font-weight: bold; color: #2980b9;"></p>
-        <button class="btn-danger" onclick="goHome()">🏠 메인으로</button>
+        <p class="proverb-text" id="prac-question"></p>
+        <input type="text" id="prac-input" placeholder="빈칸 채우기 (띄어쓰기 무시)" onkeypress="if(event.key==='Enter') checkPractice()">
+        <br>
+        <button onclick="checkPractice()">정답 확인</button>
+        <button class="btn-danger" onclick="endPractice()">끝내기 (오답 확인)</button>
+        <p id="prac-feedback" style="font-weight: bold; margin-top: 10px;"></p>
+    </div>
+    <div id="screen-practice-result" class="hidden">
+        <h2>📊 연습 모드 결과</h2>
+        <div id="prac-missed-area"></div>
+        <button onclick="goHome()">🏠 메인으로</button>
     </div>
 
-    <div id="screen-teacher" class="hidden">
-        <h2>👨‍🏫 교사용 대시보드</h2>
-        <p>학생들의 접속 현황을 확인하고 게임을 시작하세요.</p>
-        <div class="team-list" id="teacher-team-list"></div>
-        <button class="btn-ready" onclick="startMultiGame()">🚀 전체 게임 시작</button>
-        <button class="btn-danger" onclick="resetGame()">🔄 로비 초기화</button>
-        <button class="btn-danger" onclick="goHome()">🏠 메인으로</button>
-    </div>
-
-    <div id="screen-multi-quiz" class="hidden">
-        <h2>🔥 경쟁 도전 진행 중!</h2>
-        <div class="score-board">문제 <span id="multi-question-num">1</span>번</div>
-        <div class="info-box" id="multi-question-area" style="text-align: center; font-size: 20px; font-weight: bold;">
-            선생님이 문제를 내고 있습니다...
-        </div>
-    </div>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-<script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBxkFKJQF3TaYP_024apdVQs4T86FAM08Q",
-      authDomain: "proverb-game-6582d.firebaseapp.com",
-      databaseURL: "https://proverb-game-6582d-default-rtdb.firebaseio.com",
-      projectId: "proverb-game-6582d",
-      storageBucket: "proverb-game-6582d.firebasestorage.app",
-      messagingSenderId: "303291371598",
-      appId: "1:303291371598:web:4e9ccb071bfa879a50f31f"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    let myName = ""; // 학생 본인 이름 저장용
-
-    function showScreen(screenId) {
-        document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden'));
-        document.getElementById(screenId).classList.remove('hidden');
-    }
-
-    function goHome() {
-        showScreen('screen-main');
-    }
-
-    // [학생용] 게임 접속
-    function joinGame() {
-        myName = document.getElementById('player-name').value.trim();
-        const team = document.getElementById('player-team').value;
-
-        if (myName === "") {
-            alert("이름을 입력해주세요!");
-            return;
-        }
-
-        db.ref('lobby/' + myName).set({
-            name: myName,
-            team: team,
-            score: 0,
-            status: "ready"
-        }).then(() => {
-            document.getElementById('lobby-status').innerText = "✅ 준비 완료! 곧 게임이 시작됩니다.";
-            document.getElementById('player-name').disabled = true;
-            document.getElementById('player-team').disabled = true;
-        });
-    }
-
-    // [교사용] 대시보드 로드
-    function initTeacherDashboard() {
-        showScreen('screen-teacher');
-        db.ref('lobby').on('value', (snapshot) => {
-            const teamListDiv = document.getElementById('teacher-team-list');
-            teamListDiv.innerHTML = ""; 
-            const data = snapshot.val();
-            
-            if (!data) return;
-
-            const teams = { "1.⭐": [], "2.❤️": [], "3.🎈": [], "4.🍀": [] };
-            for (let key in data) {
-                let player = data[key];
-                if(teams[player.team]) teams[player.team].push(player.name);
-            }
-
-            for (let teamName in teams) {
-                let card = document.createElement('div');
-                card.className = 'team-card';
-                card.innerHTML = `<h3>${teamName} (${teams[teamName].length}명)</h3>`;
-                teams[teamName].forEach(name => {
-                    let p = document.createElement('div');
-                    p.className = 'player-item';
-                    p.innerText = `✔️ ${name}`;
-                    card.appendChild(p);
-                });
-                teamListDiv.appendChild(card);
-            }
-        });
-    }
-
-    // [교사용] 전체 게임 시작 신호 보내기
-    function startMultiGame() {
-        // 게임 상태를 'playing'으로 변경하고, 1번 문제로 세팅
-        db.ref('gameState').set({
-            status: 'playing',
-            currentQuestion: 1
-        });
-    }
-
-    // [교사용] 로비 및 게임 상태 초기화
-    function resetGame() {
-        db.ref('lobby').remove();
-        db.ref('gameState').set({ status: 'waiting', currentQuestion: 0 });
-        alert("로비와 게임 상태가 초기화되었습니다.");
-    }
-
-    // [공통] 실시간 게임 상태 감지기 (핵심 동기화 로직)
-    db.ref('gameState').on('value', (snapshot) => {
-        const state = snapshot.val();
-        if (state && state.status === 'playing') {
-            // 선생님이 시작 버튼을 눌렀을 때 모든 접속자의 화면을 강제로 퀴즈 화면으로 이동
-            showScreen('screen-multi-quiz');
-            document.getElementById('multi-question-num').innerText = state.currentQuestion;
-            document.getElementById('multi-question-area').innerText = "문제 " + state.currentQuestion + "번이 시작되었습니다! (문제 출제 로직 대기 중)";
-        } else if (state && state.status === 'waiting') {
-            // 초기화 시 메인으로 강제 이동
-            goHome();
-            document.getElementById('lobby-status').innerText = "";
-            document.getElementById('player-name').disabled = false;
-            document.getElementById('player-team').disabled = false;
-        }
-    });
-
-</script>
-</body>
-</html>
+    <div id="screen-record" class="hidden">
+        <h2>⏱️ 기록 도전 (25문제)</h2>
+        <div
