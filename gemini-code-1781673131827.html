@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관용 표현 MASTER 되기</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 600px; max-width: 90%; text-align: center; }
+        h1 { color: #2c3e50; }
+        .hidden { display: none; }
+        button { background-color: #3498db; color: white; border: none; padding: 10px 20px; margin: 10px; border-radius: 5px; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        button:hover { background-color: #2980b9; }
+        .btn-danger { background-color: #e74c3c; }
+        .btn-danger:hover { background-color: #c0392b; }
+        input[type="text"] { padding: 10px; width: 80%; font-size: 16px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        .info-box { background-color: #ecf0f1; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left; }
+        .score-board { font-size: 20px; font-weight: bold; color: #27ae60; margin-bottom: 15px; }
+        .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .options button { margin: 0; height: 60px; font-size: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="app">
+    <div id="screen-main">
+        <h1>🏆 관용 표현 MASTER</h1>
+        <p>어떤 모드로 학습할까요?</p>
+        <button onclick="startPractice()">✏️ 연습 모드 (타자 치기)</button>
+        <button onclick="startQuiz()">⏱️ 기록 도전 (스피드 퀴즈)</button>
+    </div>
+
+    <div id="screen-practice" class="hidden">
+        <h2>✏️ 연습 모드</h2>
+        <div class="info-box">
+            <p><strong>상황:</strong> <span id="prac-example"></span></p>
+            <p><strong>뜻:</strong> <span id="prac-meaning"></span></p>
+        </div>
+        <h3 id="prac-question"></h3>
+        <input type="text" id="prac-input" placeholder="빈칸에 알맞은 말을 적어보세요." onkeypress="if(event.key==='Enter') checkPractice()">
+        <br>
+        <button onclick="checkPractice()">정답 확인</button>
+        <button class="btn-danger" onclick="goHome()">🏠 메인으로</button>
+        <p id="prac-feedback" style="font-weight: bold; margin-top: 10px;"></p>
+    </div>
+
+    <div id="screen-quiz" class="hidden">
+        <h2>⏱️ 기록 도전</h2>
+        <div class="score-board">
+            점수: <span id="quiz-score">0</span>점 | 남은 시간: <span id="quiz-timer">60</span>초
+        </div>
+        <div class="info-box">
+            <p><strong>다음 상황에 알맞은 속담은?</strong></p>
+            <p id="quiz-example" style="font-size: 18px; font-weight: bold;"></p>
+        </div>
+        <div class="options" id="quiz-options">
+            </div>
+        <br>
+        <button class="btn-danger" onclick="goHome()">🏠 중간에 나가기</button>
+    </div>
+
+    <div id="screen-result" class="hidden">
+        <h1>🎉 도전 종료!</h1>
+        <h2>최종 점수: <span id="final-score"></span>점</h2>
+        <button onclick="goHome()">🏠 메인으로 돌아가기</button>
+    </div>
+</div>
+
+<script>
+    // 속담 데이터베이스 (PDF 자료 활용)
+    const proverbs = [
+        { proverb: "가는 날이 장날", meaning: "어떤 일을 하려고 하는데 뜻하지 않은 일을 당한다.", example: "떡볶이 먹으러 갔는데 하필 오늘이 휴일이네. ( )이라니까." },
+        { proverb: "가는 말이 고와야 오는 말이 곱다", meaning: "남에게 말이나 행동을 좋게 해야 자기에게도 좋은 반응이 돌아온다.", example: "네가 먼저 짜증을 내니까 친구도 화를 내지. ( )고 하잖아." },
+        { proverb: "개구리 올챙이 적 생각 못 한다", meaning: "성공하고 나서 어려웠던 지난날은 생각하지 않고 뽐냄.", example: "자기도 신입생 때 실수 많이 했으면서 후배를 저렇게 혼내다니, ( )더니 딱 그 꼴이야." },
+        { proverb: "백지장도 맞들면 낫다", meaning: "아무리 쉬운 일이라도 서로 힘을 합하면 훨씬 쉽다.", example: "청소 구역이 넓었는데 네가 도와주니 금방 끝났어. 역시 ( )." },
+        { proverb: "사공이 많으면 배가 산으로 간다", meaning: "간섭하는 사람이 많으면 일이 제대로 되기 어렵다.", example: "모둠 숙제 하는데 서로 자기 아이디어만 맞다고 우기니, ( )고 결론이 안 나네." }
+    ];
+
+    let currentQuestion = 0;
+    let score = 0;
+    let timer;
+    let timeLeft = 60;
+
+    // 화면 전환 함수
+    function showScreen(screenId) {
+        document.getElementById('screen-main').classList.add('hidden');
+        document.getElementById('screen-practice').classList.add('hidden');
+        document.getElementById('screen-quiz').classList.add('hidden');
+        document.getElementById('screen-result').classList.add('hidden');
+        document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    function goHome() {
+        clearInterval(timer);
+        showScreen('screen-main');
+    }
+
+    /* ---------------- 연습 모드 로직 ---------------- */
+    function startPractice() {
+        currentQuestion = 0;
+        showScreen('screen-practice');
+        loadPracticeQuestion();
+    }
+
+    function loadPracticeQuestion() {
+        const item = proverbs[currentQuestion % proverbs.length]; // 무한 반복
+        document.getElementById('prac-example').innerText = item.example;
+        document.getElementById('prac-meaning').innerText = item.meaning;
+        
+        // 속담 앞부분 보여주고 뒷부분 맞추기 (단순화)
+        let words = item.proverb.split(" ");
+        let hint = words.slice(0, Math.ceil(words.length / 2)).join(" ");
+        document.getElementById('prac-question').innerText = hint + " _________";
+        
+        document.getElementById('prac-input').value = "";
+        document.getElementById('prac-feedback').innerText = "";
+        document.getElementById('prac-input').focus();
+    }
+
+    function checkPractice() {
+        const userInput = document.getElementById('prac-input').value;
+        const correctAnswer = proverbs[currentQuestion % proverbs.length].proverb;
+        
+        // 띄어쓰기 무시하고 비교
+        const cleanUser = userInput.replace(/\s/g, '');
+        const cleanAnswer = correctAnswer.replace(/\s/g, '');
+
+        // 입력값이 정답에 포함되어 있는지 확인 (뒷부분만 쳤을 수도 있으므로)
+        if (cleanAnswer.includes(cleanUser) && cleanUser.length > 2) {
+            document.getElementById('prac-feedback').style.color = "green";
+            document.getElementById('prac-feedback').innerText = "정답입니다! (" + correctAnswer + ")";
+            setTimeout(() => {
+                currentQuestion++;
+                loadPracticeQuestion();
+            }, 1000);
+        } else {
+            document.getElementById('prac-feedback').style.color = "red";
+            document.getElementById('prac-feedback').innerText = "틀렸습니다. 다시 시도해보세요!";
+        }
+    }
+
+    /* ---------------- 기록 도전 로직 ---------------- */
+    function startQuiz() {
+        score = 0;
+        timeLeft = 60;
+        document.getElementById('quiz-score').innerText = score;
+        showScreen('screen-quiz');
+        
+        timer = setInterval(() => {
+            timeLeft--;
+            document.getElementById('quiz-timer').innerText = timeLeft;
+            if (timeLeft <= 0) endGame();
+        }, 1000);
+
+        loadQuizQuestion();
+    }
+
+    function loadQuizQuestion() {
+        // 문제 섞기
+        let shuffled = [...proverbs].sort(() => 0.5 - Math.random());
+        let answerItem = shuffled[0];
+        
+        document.getElementById('quiz-example').innerText = answerItem.example;
+        
+        // 오답용 보기 3개 추출
+        let options = [answerItem.proverb, shuffled[1].proverb, shuffled[2].proverb, shuffled[3].proverb];
+        options.sort(() => 0.5 - Math.random()); // 보기 섞기
+
+        const optionsDiv = document.getElementById('quiz-options');
+        optionsDiv.innerHTML = ""; // 기존 버튼 초기화
+        
+        options.forEach(opt => {
+            let btn = document.createElement("button");
+            btn.innerText = opt;
+            btn.onclick = () => checkQuiz(opt, answerItem.proverb);
+            optionsDiv.appendChild(btn);
+        });
+    }
+
+    function checkQuiz(selected, correct) {
+        if (selected === correct) {
+            // 기본 5점 + 남은 시간 비례 점수
+            let timeBonus = Math.floor(timeLeft / 10); 
+            score += (5 + timeBonus);
+        } else {
+            score -= 5;
+            if (score < 0) score = 0; // 하한선 방어
+        }
+        document.getElementById('quiz-score').innerText = score;
+        loadQuizQuestion(); // 바로 다음 문제로
+    }
+
+    function endGame() {
+        clearInterval(timer);
+        showScreen('screen-result');
+        document.getElementById('final-score').innerText = score;
+    }
+</script>
+
+</body>
+</html>
