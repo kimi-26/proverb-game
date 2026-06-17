@@ -11,25 +11,16 @@
         h2 { color: #34495e; }
         .hidden { display: none; }
         
-        /* 버튼 스타일 */
         button { background-color: #3498db; color: white; border: none; padding: 12px 20px; margin: 8px; border-radius: 5px; cursor: pointer; font-size: 16px; transition: 0.3s; font-weight: bold; }
         button:hover { background-color: #2980b9; }
         .btn-danger { background-color: #e74c3c; }
         .btn-danger:hover { background-color: #c0392b; }
         .btn-ready { background-color: #2ecc71; width: 100%; font-size: 18px; margin-top: 15px; }
         
-        /* 입력창 및 셀렉트 박스 */
         input[type="text"], select { padding: 12px; width: 80%; font-size: 16px; margin: 10px 0; border: 2px solid #bdc3c7; border-radius: 5px; text-align: center; }
         
-        /* 박스 및 텍스트 레이아웃 */
         .info-box { background-color: #ecf0f1; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: left; }
         .score-board { font-size: 20px; font-weight: bold; color: #27ae60; margin-bottom: 15px; }
-        .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .options button { margin: 0; height: 60px; font-size: 15px; }
-        
-        /* 타이포그래피 정렬 및 크기 일치 (매우 중요) */
-        .proverb-text { font-size: 24px; font-weight: bold; color: #2c3e50; vertical-align: middle; }
-        .proverb-blank { font-size: 24px; font-weight: bold; color: #e74c3c; display: inline-block; min-width: 100px; border-bottom: 3px solid #e74c3c; text-align: center; vertical-align: middle; margin: 0 5px; }
         
         /* 교사용 화면 모둠 리스트 */
         .team-list { display: flex; justify-content: space-around; margin-top: 20px; flex-wrap: wrap; }
@@ -45,7 +36,7 @@
         <h1>🏆 관용 표현 MASTER</h1>
         <p>어떤 모드로 학습할까요?</p>
         <button onclick="showScreen('screen-practice')">✏️ 연습 모드</button>
-        <button onclick="startQuiz()">⏱️ 기록 도전</button>
+        <button onclick="alert('기록 도전은 준비 중입니다!')">⏱️ 기록 도전</button>
         <hr style="border: 1px solid #ecf0f1; margin: 20px 0;">
         <button class="btn-ready" style="background-color: #f39c12;" onclick="showScreen('screen-lobby')">🔥 경쟁 도전 (학생용)</button>
         <button style="background-color: #95a5a6; margin-top: 20px;" onclick="initTeacherDashboard()">👨‍🏫 교사용 대시보드</button>
@@ -65,25 +56,24 @@
             <button class="btn-ready" onclick="joinGame()">준비 완료!</button>
         </div>
         <p id="lobby-status" style="font-weight: bold; color: #2980b9;"></p>
-        <button class="btn-danger" onclick="goHome()">🏠 뒤로 가기</button>
+        <button class="btn-danger" onclick="goHome()">🏠 메인으로</button>
     </div>
 
     <div id="screen-teacher" class="hidden">
         <h2>👨‍🏫 교사용 대시보드</h2>
         <p>학생들의 접속 현황을 확인하고 게임을 시작하세요.</p>
-        <div class="team-list" id="teacher-team-list">
-            </div>
-        <button class="btn-ready" onclick="alert('게임 시작 기능은 다음 단계에서 구현됩니다!')">🚀 전체 게임 시작</button>
+        <div class="team-list" id="teacher-team-list"></div>
+        <button class="btn-ready" onclick="startMultiGame()">🚀 전체 게임 시작</button>
+        <button class="btn-danger" onclick="resetGame()">🔄 로비 초기화</button>
         <button class="btn-danger" onclick="goHome()">🏠 메인으로</button>
     </div>
 
-    <div id="screen-practice" class="hidden">
-        <h2>✏️ 연습 모드 (준비중)</h2>
-        <button class="btn-danger" onclick="goHome()">🏠 메인으로</button>
-    </div>
-    <div id="screen-quiz" class="hidden">
-        <h2>⏱️ 기록 도전 (준비중)</h2>
-        <button class="btn-danger" onclick="goHome()">🏠 메인으로</button>
+    <div id="screen-multi-quiz" class="hidden">
+        <h2>🔥 경쟁 도전 진행 중!</h2>
+        <div class="score-board">문제 <span id="multi-question-num">1</span>번</div>
+        <div class="info-box" id="multi-question-area" style="text-align: center; font-size: 20px; font-weight: bold;">
+            선생님이 문제를 내고 있습니다...
+        </div>
     </div>
 </div>
 
@@ -91,7 +81,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
-    // 선생님의 파이어베이스 설정값 적용
     const firebaseConfig = {
       apiKey: "AIzaSyBxkFKJQF3TaYP_024apdVQs4T86FAM08Q",
       authDomain: "proverb-game-6582d.firebaseapp.com",
@@ -102,11 +91,11 @@
       appId: "1:303291371598:web:4e9ccb071bfa879a50f31f"
     };
 
-    // 파이어베이스 초기화
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 화면 전환 함수
+    let myName = ""; // 학생 본인 이름 저장용
+
     function showScreen(screenId) {
         document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden'));
         document.getElementById(screenId).classList.remove('hidden');
@@ -116,61 +105,48 @@
         showScreen('screen-main');
     }
 
-    // 학생 로비 - 접속 기능
+    // [학생용] 게임 접속
     function joinGame() {
-        const name = document.getElementById('player-name').value.trim();
+        myName = document.getElementById('player-name').value.trim();
         const team = document.getElementById('player-team').value;
 
-        if (name === "") {
+        if (myName === "") {
             alert("이름을 입력해주세요!");
             return;
         }
 
-        // 파이어베이스 실시간 데이터베이스에 참가자 정보 쓰기
-        db.ref('lobby/' + name).set({
-            name: name,
+        db.ref('lobby/' + myName).set({
+            name: myName,
             team: team,
+            score: 0,
             status: "ready"
         }).then(() => {
-            document.getElementById('lobby-status').innerText = "✅ 준비 완료! 선생님이 시작할 때까지 기다려주세요.";
+            document.getElementById('lobby-status').innerText = "✅ 준비 완료! 곧 게임이 시작됩니다.";
             document.getElementById('player-name').disabled = true;
             document.getElementById('player-team').disabled = true;
-        }).catch((error) => {
-            console.error("데이터 저장 실패: ", error);
-            alert("접속에 실패했습니다. 다시 시도해주세요.");
         });
     }
 
-    // 교사용 대시보드 - 실시간 참가자 목록 불러오기
+    // [교사용] 대시보드 로드
     function initTeacherDashboard() {
         showScreen('screen-teacher');
-        const teamListDiv = document.getElementById('teacher-team-list');
-
-        // 파이어베이스에서 'lobby' 경로의 데이터 변화를 실시간으로 감지
         db.ref('lobby').on('value', (snapshot) => {
-            teamListDiv.innerHTML = ""; // 기존 목록 초기화
+            const teamListDiv = document.getElementById('teacher-team-list');
+            teamListDiv.innerHTML = ""; 
             const data = snapshot.val();
             
-            if (!data) {
-                teamListDiv.innerHTML = "<p>아직 접속한 학생이 없습니다.</p>";
-                return;
-            }
+            if (!data) return;
 
-            // 모둠별로 학생 분류하기
             const teams = { "1.⭐": [], "2.❤️": [], "3.🎈": [], "4.🍀": [] };
             for (let key in data) {
                 let player = data[key];
-                if(teams[player.team]) {
-                    teams[player.team].push(player.name);
-                }
+                if(teams[player.team]) teams[player.team].push(player.name);
             }
 
-            // 화면에 모둠별 카드 그리기
             for (let teamName in teams) {
                 let card = document.createElement('div');
                 card.className = 'team-card';
                 card.innerHTML = `<h3>${teamName} (${teams[teamName].length}명)</h3>`;
-                
                 teams[teamName].forEach(name => {
                     let p = document.createElement('div');
                     p.className = 'player-item';
@@ -181,7 +157,8 @@
             }
         });
     }
-</script>
 
-</body>
-</html>
+    // [교사용] 전체 게임 시작 신호 보내기
+    function startMultiGame() {
+        // 게임 상태를 'playing'으로 변경하고, 1번 문제로 세팅
+        db.ref
