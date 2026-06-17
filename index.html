@@ -125,7 +125,7 @@
                 <option value="9모둠 👑">9모둠 👑</option>
                 <option value="10모둠 🎯">10모둠 🎯</option>
             </select>
-            <button class="btn-ready" id="btn-join" onclick="joinMultiGame()">로그인 및 준비 완료!</button>
+            <button class="btn-ready" id="btn-join" onclick="toggleReady()">로그인 및 준비 완료!</button>
         </div>
         <p id="lobby-status" style="font-weight: bold; color: #2980b9;"></p>
         <button class="btn-danger" onclick="goHome()">🏠 로그아웃 및 메인으로</button>
@@ -171,8 +171,8 @@
         
         <div id="multi-teacher-result-controls" class="hidden" style="margin-top: 20px; border-top: 2px solid #ccc; padding-top:15px;">
             <p style="color:#c0392b; font-weight:bold;">👨‍🏫 선생님 전용 컨트롤</p>
-            <button class="btn-ready" style="background-color: #9b59b6;" onclick="startMultiGame()">▶️ 다음 라운드 진행 (기존 점수에 누적)</button>
-            <button class="btn-danger" style="background-color: #f39c12; width: 100%; margin-top:10px;" onclick="returnToLobbyWithReset()">🔄 대기실로 모두 소환 (점수 0점으로 초기화)</button>
+            <button class="btn-ready" style="background-color: #9b59b6;" onclick="startNextRound()">▶️ 점수 리셋하고 바로 다음 라운드(한판 더!)</button>
+            <button class="btn-danger" style="background-color: #f39c12; width: 100%; margin-top:10px;" onclick="returnToLobbyWithReset()">🔄 모두 대기실로 소환 (게임 완전 종료)</button>
         </div>
         
         <button class="btn-danger" style="margin-top:20px;" onclick="goHome()">🏠 로그아웃 및 메인으로</button>
@@ -184,7 +184,7 @@
 
 <script>
     /* ==========================================
-       학생 계정 DB 및 브라우저 세션 복구 기능
+       학생 계정 DB
        ========================================== */
     const studentDB = {
         "1🐜개미물곰": "9852", "2🐜쟈스민갬": "7251", "3🐜빼빼개미": "8982", "4🐜문어개미": "5627",
@@ -196,6 +196,7 @@
     let myName = "";
     let myTeam = "";
     let isTeacher = false;
+    let isStudentReady = false; // 준비 상태 추적용 변수
 
     window.onload = () => {
         const lobbySelect = document.getElementById('player-id');
@@ -207,7 +208,6 @@
             recSelect.appendChild(opt2);
         }
 
-        // 브라우저 새로고침(F5) 시 기존 접속 정보 복구
         let savedRole = sessionStorage.getItem('role');
         if (savedRole === 'teacher') {
             initTeacherDashboard(true);
@@ -219,8 +219,15 @@
                     let st = snap.val();
                     if (!st || st.status !== 'playing') {
                         showScreen('screen-lobby');
+                        // 새로고침해도 준비 상태를 유지
+                        isStudentReady = true;
+                        document.getElementById('player-id').value = myName;
+                        document.getElementById('player-id').disabled = true;
+                        document.getElementById('player-pw').disabled = true;
+                        document.getElementById('player-team').disabled = true;
+                        document.getElementById('btn-join').innerText = "준비 취소 (수정하기)";
+                        document.getElementById('btn-join').style.backgroundColor = "#e74c3c";
                         document.getElementById('lobby-status').innerText = "✅ 재접속 완료! 대기 중...";
-                        document.getElementById('btn-join').disabled = true;
                     }
                 });
             }
@@ -242,7 +249,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 속담 데이터 샘플
+    // 💡 [여기서부터 170개 속담 데이터를 교체하시면 됩니다!]
     const proverbs = [
         { p: "가는 날이 장날", m: "어떤 일을 하려고 하는데 뜻하지 않은 일을 공교롭게 당한다.", i: "ㄱㄴ ㄴㅇ ㅈㄴ", e: ["떡볶이 먹으러 갔는데 하필 휴일이네. ( )이라니까.", "오랜만에 소풍을 갔는데 갑자기 폭우가 쏟아져. 완전 ( )이야."] },
         { p: "가는 말이 고와야 오는 말이 곱다", m: "남에게 말이나 행동을 좋게 해야 자기에게도 좋은 반응이 돌아온다.", i: "ㄱㄴ ㅁㅇ ㄱㅇㅇ ㅇㄴ ㅁㅇ ㄱㄷ", e: ["네가 먼저 짜증을 내니까 친구도 화를 내지. ( )고 하잖아."] },
@@ -269,26 +276,33 @@
         clearInterval(window.recTimerObj); 
         clearInterval(window.multiTimerObj); 
         sessionStorage.clear(); // 로그아웃 처리
-        myName = ""; myTeam = ""; isTeacher = false;
+        myName = ""; myTeam = ""; isTeacher = false; isStudentReady = false;
+        
+        // 폼 초기화
+        document.getElementById('player-id').disabled = false;
+        document.getElementById('player-pw').disabled = false;
+        document.getElementById('player-pw').value = "";
+        document.getElementById('player-team').disabled = false;
+        document.getElementById('btn-join').innerText = "로그인 및 준비 완료!";
+        document.getElementById('btn-join').style.backgroundColor = "#2ecc71";
+        document.getElementById('lobby-status').innerText = "";
+
         showScreen('screen-main'); 
     }
     
     function confirmExit() { if(confirm("게임을 중간에 나가면 점수가 저장되지 않습니다. 나가시겠습니까?")) goHome(); }
 
     /* ==========================================
-       명예의 전당 (랭킹 보기)
+       명예의 전당, 연습 모드, 기록 도전 (변동 없음)
        ========================================== */
     function showHallOfFame() {
         showScreen('screen-hall-of-fame');
         const listDiv = document.getElementById('hall-of-fame-list');
         listDiv.innerHTML = "<p>데이터를 불러오는 중...</p>";
-        
         db.ref('hallOfFame').once('value', snap => {
-            let data = snap.val() || {};
-            let players = [];
+            let data = snap.val() || {}; let players = [];
             for (let name in data) { players.push({ name: name, score: data[name].score, date: data[name].date }); }
             if(players.length === 0) return listDiv.innerHTML = "<p>아직 등록된 랭킹이 없습니다. 첫 번째로 도전해보세요!</p>";
-            
             players.sort((a, b) => b.score - a.score);
             let html = "";
             players.forEach((p, i) => {
@@ -299,9 +313,6 @@
         });
     }
 
-    /* ==========================================
-       모드 1 & 2 (연습, 기록 모드)
-       ========================================== */
     let pracIdx = 0; let missedProverbs = new Set();
     function startPractice() { pracIdx = 0; missedProverbs.clear(); shuffle(proverbs); loadPracQ(); showScreen('screen-practice'); }
     function loadPracQ() {
@@ -396,24 +407,48 @@
     }
 
     /* ==========================================
-       모드 3: 경쟁 도전 (안전성 및 연속 게임 강화)
+       모드 3: 경쟁 도전 (준비 취소 로직 및 재시작 로직 추가)
        ========================================== */
-    function joinMultiGame() {
-        let selectedId = document.getElementById('player-id').value;
-        let enteredPw = document.getElementById('player-pw').value.trim();
-        myTeam = document.getElementById('player-team').value;
+    function toggleReady() {
+        if (!isStudentReady) {
+            // 준비 안 된 상태 -> 준비 완료 상태로 변경
+            let selectedId = document.getElementById('player-id').value;
+            let enteredPw = document.getElementById('player-pw').value.trim();
+            myTeam = document.getElementById('player-team').value;
 
-        if (!selectedId) return alert("아이디를 선택해주세요!");
-        if (studentDB[selectedId] !== enteredPw) return alert("비밀번호가 일치하지 않습니다.");
+            if (!selectedId) return alert("아이디를 선택해주세요!");
+            if (studentDB[selectedId] !== enteredPw) return alert("비밀번호가 일치하지 않습니다.");
 
-        myName = selectedId;
-        sessionStorage.setItem('role', 'student');
-        sessionStorage.setItem('myName', myName);
-        sessionStorage.setItem('myTeam', myTeam);
+            myName = selectedId;
+            isStudentReady = true;
+            
+            sessionStorage.setItem('role', 'student');
+            sessionStorage.setItem('myName', myName);
+            sessionStorage.setItem('myTeam', myTeam);
 
-        document.getElementById('btn-join').disabled = true;
-        document.getElementById('lobby-status').innerText = "✅ 인증 완료! 선생님을 기다립니다...";
-        db.ref('lobby/' + myName).set({ name: myName, team: myTeam, score: 0 });
+            document.getElementById('player-id').disabled = true;
+            document.getElementById('player-pw').disabled = true;
+            document.getElementById('player-team').disabled = true;
+            
+            document.getElementById('btn-join').innerText = "준비 취소 (수정하기)";
+            document.getElementById('btn-join').style.backgroundColor = "#e74c3c";
+            document.getElementById('lobby-status').innerText = "✅ 준비 완료! 대기 중...";
+            
+            db.ref('lobby/' + myName).set({ name: myName, team: myTeam, score: 0 });
+        } else {
+            // 준비 완료 상태 -> 취소하고 다시 수정 가능하게 변경
+            isStudentReady = false;
+            
+            document.getElementById('player-id').disabled = false;
+            document.getElementById('player-pw').disabled = false;
+            document.getElementById('player-team').disabled = false;
+            
+            document.getElementById('btn-join').innerText = "로그인 및 준비 완료!";
+            document.getElementById('btn-join').style.backgroundColor = "#2ecc71";
+            document.getElementById('lobby-status').innerText = "아이디와 모둠을 수정할 수 있습니다.";
+            
+            db.ref('lobby/' + myName).remove();
+        }
     }
     
     function initTeacherDashboard(isRecovery = false) {
@@ -438,29 +473,41 @@
     }
     
     function startMultiGame() {
-        isEvaluating = false; // 진행 오류 방지를 위해 락(Lock) 해제
+        isEvaluating = false; 
         let pool = shuffle([...proverbs]);
         let quizCount = Math.min(20, pool.length);
         let multiQList = pool.slice(0, quizCount).map(item => ({ p: item.p, m: item.m, i: item.i, e: getRandomExample(item) }));
         db.ref('gameState').set({ status: 'playing', qIndex: 0, quizData: multiQList, answers: {}, showAns: false });
     }
+
+    // ⚡ [추가] 다음 라운드 진행 (점수 0점으로 초기화하고 바로 시작)
+    function startNextRound() {
+        db.ref('lobby').once('value', snap => {
+            let data = snap.val() || {}, updates = {};
+            for(let key in data) { updates[`lobby/${key}/score`] = 0; } // 모든 학생 점수 리셋
+            
+            if(Object.keys(updates).length > 0) {
+                db.ref().update(updates).then(() => { startMultiGame(); });
+            } else {
+                startMultiGame(); // 참여자가 없어도 게임은 시작되게 처리
+            }
+        });
+    }
     
     function resetMultiGame() { 
-        if(confirm("모든 데이터를 초기화하시겠습니까?")) {
+        if(confirm("모든 데이터를 초기화하시겠습니까? 학생들은 대기실에서 튕겨나갑니다.")) {
             db.ref('lobby').remove(); 
             db.ref('gameState').set({status:'waiting'}); 
             alert("초기화되었습니다."); 
         }
     }
 
-    // [교사 전용 제어기능 추가] 강제 중단 및 복귀
     function abortMultiGame() {
         if(confirm("진행 중인 게임을 강제 종료하고 모두를 대기실로 부르시겠습니까?")) {
             db.ref('gameState').update({ status: 'waiting' });
         }
     }
 
-    // [교사 전용 제어기능 추가] 결과 화면에서 점수 비우고 대기실 복귀
     function returnToLobbyWithReset() {
         if(confirm("모든 모둠의 점수를 0점으로 초기화하고 학생들을 대기실로 이동하시겠습니까?")) {
             db.ref('lobby').once('value', snap => {
@@ -472,13 +519,12 @@
         }
     }
 
-    // 핵심 리스너
     db.ref('gameState').on('value', snap => {
         let state = snap.val();
         if(!state) return;
 
         if (state.status === 'playing') {
-            if (!isTeacher && !myName) return; // 미인증 사용자 방어
+            if (!isTeacher && !isStudentReady) return; 
 
             showScreen('screen-multi-quiz');
             document.getElementById('multi-header').innerText = isTeacher ? "👨‍🏫 선생님 화면 (모니터링)" : "🔥 게임 진행 중!";
@@ -558,17 +604,15 @@
             }
 
         } else if (state.status === 'finished') {
-            if (isTeacher || myName) processFinalResult();
+            if (isTeacher || isStudentReady) processFinalResult();
         } else if (state.status === 'waiting') {
-            // 게임이 중단되거나 대기실로 돌아갈 때 학생들을 튕겨내지 않고 로비 화면으로 이동시킴
             let currentScreen = document.querySelector('.container > div:not(.hidden)')?.id;
             if (currentScreen === 'screen-multi-quiz' || currentScreen === 'screen-multi-result' || currentScreen === 'screen-teacher') {
                 if (isTeacher) {
                     showScreen('screen-teacher');
-                } else if (myName) {
+                } else if (isStudentReady) {
                     showScreen('screen-lobby');
                     document.getElementById('lobby-status').innerText = "✅ 대기실로 돌아왔습니다. 다음 게임을 기다립니다...";
-                    document.getElementById('btn-join').disabled = true;
                 } else {
                     goHome();
                 }
@@ -615,7 +659,6 @@
                     }
                 }
                 
-                // 버그 픽스: 업데이트할 점수가 없더라도 에러 없이 다음 단계로 부드럽게 넘어가도록 구조 수정
                 const proceedNext = () => {
                     db.ref('gameState').update({ showAns: true });
                     setTimeout(() => {
@@ -643,7 +686,6 @@
     function processFinalResult() {
         showScreen('screen-multi-result');
         
-        // 교사용 컨트롤 버튼 활성화 여부
         if(isTeacher) document.getElementById('multi-teacher-result-controls').classList.remove('hidden');
         else document.getElementById('multi-teacher-result-controls').classList.add('hidden');
 
