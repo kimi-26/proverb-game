@@ -36,14 +36,14 @@
     </style>
 </head>
 <body>
-<!-- 꼼수 방지용 커스텀 종료 창 -->
+<!-- 꼼수 및 실수 방지용 커스텀 종료 창 -->
 <div id="custom-exit-modal" class="modal-overlay hidden">
     <div class="modal-box">
         <h2 style="color:#e74c3c;">⚠️ 정말 나가시겠습니까?</h2>
-        <p>지금 나가면 점수가 저장되지 않습니다.<br>
-        <span style="color:#e74c3c; font-weight:bold;">(고민하는 동안에도 시간은 계속 흘러갑니다!)</span></p>
+        <p>기록이 날아가거나 모둠 접속이 끊어집니다.<br>
+        <span style="color:#e74c3c; font-weight:bold;">(기록 도전 중이라면 시간은 계속 흘러갑니다!)</span></p>
         <button class="btn-danger" onclick="goHome(); document.getElementById('custom-exit-modal').classList.add('hidden');">네, 나갈래요</button>
-        <button class="btn-ready" onclick="document.getElementById('custom-exit-modal').classList.add('hidden');">아니요, 계속 풀래요</button>
+        <button class="btn-ready" onclick="document.getElementById('custom-exit-modal').classList.add('hidden');">아니요, 계속 할래요</button>
     </div>
 </div>
 <div class="container" id="app">
@@ -140,7 +140,7 @@
             <button class="btn-ready" id="btn-join" onclick="toggleReady()">로그인 및 준비 완료!</button>
         </div>
         <p id="lobby-status" style="font-weight: bold; color: #2980b9;"></p>
-        <button class="btn-danger" onclick="goHome()">🏠 로그아웃 및 메인으로</button>
+        <button class="btn-danger" onclick="confirmExit()">🏠 로그아웃 및 메인으로</button>
     </div>
 
     <div id="screen-teacher" class="hidden">
@@ -187,7 +187,7 @@
             <button class="btn-danger" style="background-color: #f39c12; width: 100%; margin-top:10px;" onclick="returnToLobbyWithReset()">🔄 모두 대기실로 소환 (게임 완전 종료)</button>
         </div>
         
-        <button class="btn-danger" style="margin-top:20px;" onclick="goHome()">🏠 로그아웃 및 메인으로</button>
+        <button class="btn-danger" style="margin-top:20px;" onclick="confirmExit()">🏠 로그아웃 및 메인으로</button>
     </div>
 </div>
 
@@ -1049,6 +1049,20 @@ function confirmExit() {
             document.getElementById('res-indiv-rank').innerHTML = pHTML;
         });
     }
+    /* ==========================================
+       스마트폰 스와이프(뒤로가기) 및 브라우저 닫기 실수 방지
+       ========================================== */
+    window.addEventListener('beforeunload', function (e) {
+        let currentScreen = document.querySelector('.container > div:not(.hidden)');
+        // 기록 도전 중이거나, 경쟁 모드에 접속(로그인)해 있는 상태일 때만 경고창을 띄움
+        if (currentScreen) {
+            if (currentScreen.id === 'screen-record' || currentScreen.id === 'screen-multi-quiz' || isStudentReady) {
+                // 브라우저 기본 경고창을 띄워 진짜 나갈 것인지 한 번 더 묻습니다.
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        }
+    });
 </script>
 </body>
 </html>
