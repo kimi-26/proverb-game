@@ -1064,5 +1064,46 @@ function confirmExit() {
         }
     });
 </script>
+    <script>
+    // 1. 마우스 우클릭 방지
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+    });
+
+    // 2. F12 및 개발자 도구 단축키 완벽 차단
+    document.addEventListener('keydown', function(e) {
+        // F12 차단
+        if (e.key === 'F12' || e.keyCode === 123) {
+            e.preventDefault();
+            e.returnValue = false;
+        }
+        // Ctrl + Shift + I (개발자 도구 창 차단)
+        if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+            e.preventDefault();
+            e.returnValue = false;
+        }
+        // Ctrl + Shift + J (콘솔 창 차단)
+        if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')) {
+            e.preventDefault();
+            e.returnValue = false;
+        }
+        // Ctrl + Shift + C (요소 검사 차단)
+        if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+            e.preventDefault();
+            e.returnValue = false;
+        }
+        // Ctrl + U (페이지 소스 보기 차단)
+        if (e.ctrlKey && (e.key === 'U' || e.key === 'u')) {
+            e.preventDefault();
+            e.returnValue = false;
+        }
+    });
+
+    // 3. 만약 어떻게든 개발자 도구를 열었다면? 무서운 경고창 띄우기!
+    console.log("%c🚨 경고! 🚨", "color: red; font-size: 50px; font-weight: bold; text-shadow: 2px 2px 0 #000;");
+    console.log("%c이곳은 선생님의 개발자 전용 공간입니다.", "color: blue; font-size: 20px; font-weight: bold;");
+    console.log("%c정답을 몰래 훔쳐보려는 해킹 시도가 감지되었습니다.", "color: black; font-size: 18px;");
+    console.log("%c계속해서 코드를 들여다볼 경우, 파이어베이스 서버에 기록이 남아 부정행위로 0점 처리될 수 있습니다. 당장 창을 닫으세요!", "color: red; font-size: 16px; font-weight: bold;");
+</script>
 </body>
 </html>
