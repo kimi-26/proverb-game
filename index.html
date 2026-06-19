@@ -30,10 +30,22 @@
         .proverb-text { font-size: 22px; font-weight: bold; color: #2c3e50; }
         .missed-list { text-align: left; background: #ffeaa7; padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; }
         .rank-item { font-size: 18px; padding: 10px; border-bottom: 1px solid #ecf0f1; width: 80%; text-align: left; }
+        /* 꼼수 방지용 팝업창(모달) 스타일 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(5px); }
+        .modal-box { background: white; padding: 30px; border-radius: 15px; text-align: center; width: 400px; max-width: 90%; }
     </style>
 </head>
 <body>
-
+<!-- 꼼수 방지용 커스텀 종료 창 -->
+<div id="custom-exit-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h2 style="color:#e74c3c;">⚠️ 정말 나가시겠습니까?</h2>
+        <p>지금 나가면 점수가 저장되지 않습니다.<br>
+        <span style="color:#e74c3c; font-weight:bold;">(고민하는 동안에도 시간은 계속 흘러갑니다!)</span></p>
+        <button class="btn-danger" onclick="goHome(); document.getElementById('custom-exit-modal').classList.add('hidden');">네, 나갈래요</button>
+        <button class="btn-ready" onclick="document.getElementById('custom-exit-modal').classList.add('hidden');">아니요, 계속 풀래요</button>
+    </div>
+</div>
 <div class="container" id="app">
     <div id="screen-main">
         <h1>🏆 관용 표현 MASTER (속담편)</h1>
@@ -614,7 +626,10 @@
         showScreen('screen-main'); 
     }
     
-    function confirmExit() { if(confirm("게임을 중간에 나가면 점수가 저장되지 않습니다. 나가시겠습니까?")) goHome(); }
+function confirmExit() { 
+    // 기본 알림창 대신 화면을 가리는 커스텀 팝업창을 띄웁니다.
+    document.getElementById('custom-exit-modal').classList.remove('hidden'); 
+}
 
     /* ==========================================
        명예의 전당, 연습 모드, 기록 도전 (변동 없음)
