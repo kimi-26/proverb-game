@@ -234,17 +234,24 @@ let myName = "";
         document.getElementById('main-title-text').innerText = titleText;
     }
 // 구버전(hallOfFame) 데이터를 신버전(hallOfFame_proverb)으로 옮겨주는 임시 함수
+// 에러 추적이 가능한 데이터 복구 함수
     function migrateData() {
+        // 1. 기존 hallOfFame에서 데이터를 읽어오기
         db.ref('hallOfFame').once('value', snap => {
             let oldData = snap.val();
-            if (!oldData) return alert("합칠 예전 데이터가 없습니다!");
+            if (!oldData) {
+                return alert("합칠 예전 데이터가 hallOfFame에 존재하지 않아!");
+            }
             
-            // 파이어베이스의 update 기능을 사용해 데이터를 손실 없이 병합
-            db.ref('hallOfFame_proverb').update(oldData).then(() => {
-                alert("예전 랭킹 데이터가 '속담편'으로 모두 안전하게 합쳐졌어!");
-            }).catch(error => {
-                alert("오류가 발생했습니다: " + error.message);
+            // 2. 읽어온 데이터를 hallOfFame_proverb에 저장하기
+            db.ref('hallOfFame_proverb').set(oldData).then(() => {
+                alert("🎉 복구 완료! 예전 데이터가 '속담편'으로 안전하게 옮겨졌어. 이제 파이어베이스 화면에 hallOfFame_proverb가 나타날 거야!");
+            }).catch(writeError => {
+                alert("서버에 쓸 수 없어 (쓰기 권한 거부): " + writeError.message);
             });
+            
+        }, readError => {
+            alert("서버에서 읽을 수 없어 (읽기 권한 거부): " + readError.message);
         });
     }
     // 현재 선택된 모드의 데이터를 가져오는 함수
