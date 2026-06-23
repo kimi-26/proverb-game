@@ -232,7 +232,20 @@ let myName = "";
         let titleText = mode === 'proverb' ? "🏆 관용 표현 MASTER (속담편)" : "🏆 관용 표현 MASTER (관용어편)";
         document.getElementById('main-title-text').innerText = titleText;
     }
-
+// 구버전(hallOfFame) 데이터를 신버전(hallOfFame_proverb)으로 옮겨주는 임시 함수
+    function migrateData() {
+        db.ref('hallOfFame').once('value', snap => {
+            let oldData = snap.val();
+            if (!oldData) return alert("합칠 예전 데이터가 없습니다!");
+            
+            // 파이어베이스의 update 기능을 사용해 데이터를 손실 없이 병합
+            db.ref('hallOfFame_proverb').update(oldData).then(() => {
+                alert("예전 랭킹 데이터가 '속담편'으로 모두 안전하게 합쳐졌어!");
+            }).catch(error => {
+                alert("오류가 발생했습니다: " + error.message);
+            });
+        });
+    }
     // 현재 선택된 모드의 데이터를 가져오는 함수
     function getActiveData() {
         return currentMode === 'proverb' ? proverbs : idioms;
