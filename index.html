@@ -968,11 +968,18 @@ function confirmExit() {
     /* ==========================================
        명예의 전당, 연습 모드, 기록 도전 (변동 없음)
        ========================================== */
-    function showHallOfFame() {
+function showHallOfFame() {
         showScreen('screen-hall-of-fame');
         const listDiv = document.getElementById('hall-of-fame-list');
         listDiv.innerHTML = "<p>데이터를 불러오는 중...</p>";
-        db.ref('hallOfFame').once('value', snap => {
+        
+        // 상단 제목도 모드에 따라 다르게 표시
+        let hofTitle = currentMode === 'proverb' ? "👑 명예의 전당 (속담) 👑" : "👑 명예의 전당 (관용어) 👑";
+        document.getElementById('hof-title').innerText = hofTitle;
+
+        // 모드에 맞는 데이터베이스 경로에서 데이터 불러오기
+        let hofRef = 'hallOfFame_' + currentMode;
+        db.ref(hofRef).once('value', snap => {
             let data = snap.val() || {}; let players = [];
             for (let name in data) { players.push({ name: name, score: data[name].score, date: data[name].date }); }
             if(players.length === 0) return listDiv.innerHTML = "<p>아직 등록된 랭킹이 없습니다. 첫 번째로 도전해보세요!</p>";
@@ -985,7 +992,6 @@ function confirmExit() {
             listDiv.innerHTML = html;
         });
     }
-
     let pracIdx = 0; let missedProverbs = new Set();
     function startPractice() { pracIdx = 0; missedProverbs.clear(); shuffle(getActiveData()); loadPracQ(); showScreen('screen-practice'); }
     function loadPracQ() {
@@ -1062,12 +1068,16 @@ function confirmExit() {
     function saveRecordToDB() {
         let pName = document.getElementById('rec-player-id').value;
         if(!pName) return alert("아이디를 선택해주세요!");
-        db.ref('hallOfFame').once('value', snap => {
+        
+        // 랭킹을 속담/관용어 모드별로 분리해서 저장
+        let hofRef = 'hallOfFame_' + currentMode;
+        
+        db.ref(hofRef).once('value', snap => {
             let data = snap.val() || {};
             let oldScore = data[pName] ? data[pName].score : 0;
             if(recScore > oldScore) {
                 data[pName] = { score: recScore, date: new Date().toLocaleDateString() };
-                db.ref('hallOfFame/' + pName).set(data[pName]);
+                db.ref(hofRef + '/' + pName).set(data[pName]);
             }
             let allScores = Object.values(data).map(d => d.score);
             if(recScore > oldScore) allScores.push(recScore); 
