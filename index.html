@@ -1065,27 +1065,33 @@ function showHallOfFame() {
         document.getElementById('rec-final-rank').innerText = ""; document.getElementById('rec-stats').innerText = "";
         document.getElementById('rec-save-area').classList.remove('hidden');
     }
-    function saveRecordToDB() {
+function saveRecordToDB() {
         let pName = document.getElementById('rec-player-id').value;
         if(!pName) return alert("아이디를 선택해주세요!");
         
-        // 랭킹을 속담/관용어 모드별로 분리해서 저장
+        // 1. 현재 스위치 상태에 따라 저장할 방 이름을 결정 (속담 -> proverb, 관용어 -> idiom)
         let hofRef = 'hallOfFame_' + currentMode;
         
+        // 2. 결정된 방(hofRef)에서 기존 점수 읽어오기
         db.ref(hofRef).once('value', snap => {
             let data = snap.val() || {};
             let oldScore = data[pName] ? data[pName].score : 0;
+            
+            // 3. 신기록일 경우 결정된 방(hofRef)에 정확히 덮어쓰기!
             if(recScore > oldScore) {
                 data[pName] = { score: recScore, date: new Date().toLocaleDateString() };
                 db.ref(hofRef + '/' + pName).set(data[pName]);
             }
+            
+            // 4. 등수 계산 및 화면 표시
             let allScores = Object.values(data).map(d => d.score);
             if(recScore > oldScore) allScores.push(recScore); 
             allScores.sort((a,b) => b-a);
             let myRank = allScores.indexOf(recScore) + 1;
+            
             document.getElementById('rec-save-area').classList.add('hidden');
             document.getElementById('rec-final-rank').innerText = `현재 등수: ${myRank}등!`;
-            document.getElementById('rec-stats').innerText = "명예의 전당 랭킹에 저장되었습니다.";
+            document.getElementById('rec-stats').innerText = "명예의 전당 랭킹에 정상적으로 분리 저장되었습니다.";
         });
     }
 
