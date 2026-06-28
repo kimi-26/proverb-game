@@ -182,7 +182,6 @@
         <div id="multi-teacher-controls" class="hidden" style="margin-top: 20px; border-top: 2px solid #ccc; padding-top:10px;">
             <p>제출 현황: <span id="multi-submit-count">0</span>명 완료</p>
             <div id="multi-answer-reveal" class="hidden" style="background:#ffeaa7; padding:10px; border-radius:5px;"></div>
-            <button id="btn-force-eval" style="display: none; background-color: #e74c3c; color: white; margin-top: 10px;" onclick="forceEvaluate(window.currentMultiQIdx)">⏩ 강제 채점 및 정답 공개 (진행 멈춤 해결)</button>
             <button class="btn-danger" style="margin-top: 15px; width:100%;" onclick="abortMultiGame()">⏹️ 게임 강제 중단 (모두 대기실로)</button>
         </div>
     </div>
@@ -1069,14 +1068,7 @@ function showHallOfFame() {
 function saveRecordToDB() {
         let pName = document.getElementById('rec-player-id').value;
         if(!pName) return alert("아이디를 선택해주세요!");
-
-    let deadline = new Date("2026-06-29T00:00:00").getTime();
-        if (currentMode === 'proverb' && new Date().getTime() >= deadline) {
-            return alert("⏳ 속담 기록 경쟁 이벤트가 마감되었습니다! 내일 결과를 기대해 주세요.");
-        }
         
-        let hofRef = 'hallOfFame_' + currentMode;
-    
         // 1. 현재 스위치 상태에 따라 저장할 방 이름을 결정 (속담 -> proverb, 관용어 -> idiom)
         let hofRef = 'hallOfFame_' + currentMode;
         
@@ -1273,14 +1265,11 @@ function saveRecordToDB() {
             let ansCount = state.answers ? Object.keys(state.answers).length : 0;
             if(isTeacher) document.getElementById('multi-submit-count').innerText = ansCount;
 
-if(state.showAns) {
+            if(state.showAns) {
                 document.getElementById('multi-timer-text').innerText = "결과 확인 중...";
                 inpArea.classList.add('hidden'); optArea.classList.add('hidden');
                 
                 if(isTeacher) {
-                    let forceBtn = document.getElementById('btn-force-eval');
-                    if(forceBtn) forceBtn.style.display = 'none';
-                    
                     let rev = document.getElementById('multi-answer-reveal'); rev.classList.remove('hidden');
                     let corrects = [], wrongs = [];
                     for(let k in state.answers) { if(state.answers[k].isCorrect) corrects.push(k); else wrongs.push(k); }
@@ -1291,13 +1280,8 @@ if(state.showAns) {
                     document.getElementById('multi-wait-msg').style.color = myAns ? "green" : "red";
                 }
             } else {
-                if(isTeacher) {
-                    document.getElementById('multi-answer-reveal').classList.add('hidden');
-                    let forceBtn = document.getElementById('btn-force-eval');
-                    if(forceBtn) forceBtn.style.display = 'inline-block';
-                    window.currentMultiQIdx = qIdx; 
-                }
-                let tLeft = 30; 
+                if(isTeacher) document.getElementById('multi-answer-reveal').classList.add('hidden');
+                let tLeft = 60; 
                 document.getElementById('multi-timer').innerText = tLeft;
                 clearInterval(window.multiTimerObj);
                 
